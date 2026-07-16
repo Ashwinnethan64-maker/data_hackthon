@@ -4,7 +4,6 @@
 	"main": "index.js",
 	"author": "ashwinnethan07@gmail.com",
 	"dependencies": {
-		"bcrypt": "^6.0.0",
 		"bcryptjs": "^3.0.3",
 		"dotenv": "^17.4.2",
 		"express": "^4.21.1",

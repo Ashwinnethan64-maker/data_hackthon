@@ -14,3 +14,16 @@ frontend/dist
 .build/
 frontend/.env
 catalyst-debug.log
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Generated Vite config artifacts
+vite.config.js
+vite.config.js.map
+vite.config.d.ts
+
+# Local scratch directories
+scratch/
+
+
