@@ -109,7 +109,7 @@ Authenticate the Catalyst CLI and link this repository to your Zoho Catalyst pro
 catalyst login
 
 # Link the project (creates .catalystrc mapped to your sandbox)
-catalyst use
+catalyst project:use
 # (or catalyst init if starting from a fresh space)
 ```
 
@@ -134,10 +134,13 @@ Install dependencies from the project root directory:
 
 ```bash
 # Frontend
-cd frontend && npm install
+cd frontend
+npm install
+npm run build
 
 # Backend
-cd ../functions/ai-cios && npm install
+cd ../functions/ai-cios
+npm install
 
 # Return to root
 cd ../..
@@ -159,7 +162,8 @@ This runs the local server on `http://localhost:3000/`.
 For active UI development with Hot Module Replacement (HMR):
 
 ```bash
-cd frontend && npm run dev
+cd frontend
+npm run dev
 ```
 
 (Accessed at `http://localhost:5173/app/`, utilizing the configured Vite proxies).
@@ -191,7 +195,9 @@ All endpoints are served under `/server/ai-cios/` in production and proxied via 
 ### Step 1: Build the frontend
 
 ```bash
-cd frontend && npm run build && cd ..
+cd frontend
+npm run build
+cd ..
 ```
 
 This produces the compiled client assets in `frontend/dist/` (which `catalyst.json` maps as the client hosting source).
