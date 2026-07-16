@@ -1,0 +1,12 @@
+{
+  "client": {
+    "source": "frontend"
+  },
+  "functions": {
+    "targets": [
+      "ai-cios"
+    ],
+    "ignore": [],
+    "source": "functions"
+  }
+}
