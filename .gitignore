@@ -8,3 +8,9 @@ coverage
 .env.local
 frontend/node_modules
 frontend/dist
+
+# Catalyst local configuration and emulator build files
+.catalystrc
+.build/
+frontend/.env
+catalyst-debug.log

@@ -2,18 +2,7 @@
 	"deployment": {
 		"name": "ai-cios",
 		"stack": "node24",
-		"type": "advancedio",
-		"env_variables": {
-			"connectionLinkName": "quickml",
-			"connectionName": "Quickml",
-			"serviceName": "zoho_catalyst",
-			"userAccess": false,
-			"isUserDefinedService": false,
-			"sharedBy": "60073452908",
-			"scope": [
-				"QuickML.deployment.READ"
-			]
-		}
+		"type": "advancedio"
 	},
 	"execution": {
 		"main": "index.js"
