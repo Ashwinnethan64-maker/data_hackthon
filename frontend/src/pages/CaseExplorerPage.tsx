@@ -100,7 +100,7 @@ export function CaseExplorerPage() {
           onExportCsv={handleExportCsv}
         />
 
-        <div className="flex items-start gap-6">
+        <div className="flex flex-col lg:flex-row items-start gap-6 relative">
           {/* Advanced filter sidebar on left */}
           <CaseFilters
             filters={filters}
@@ -111,7 +111,7 @@ export function CaseExplorerPage() {
           />
 
           {/* Interactive grid on right */}
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 w-full min-w-0">
             <CaseTable
               cases={cases}
               totalCount={totalCount}

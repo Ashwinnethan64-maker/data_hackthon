@@ -93,7 +93,7 @@ export function DashboardPage() {
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {kpis.map((item) => {
           const Icon = item.icon;
           return (
@@ -126,7 +126,7 @@ export function DashboardPage() {
         })}
       </section>
 
-      <section className="grid gap-6 xl:grid-cols-[1.45fr_0.95fr]">
+      <section className="grid gap-6 lg:grid-cols-2 xl:grid-cols-[1.45fr_0.95fr]">
         <Card className="space-y-5">
           <div className="flex items-center justify-between gap-3">
             <div>
@@ -155,7 +155,7 @@ export function DashboardPage() {
             )}
           </div>
 
-          <div className="grid gap-4 md:grid-cols-2">
+          <div className="grid gap-4 grid-cols-1 sm:grid-cols-2">
             <Card className="bg-white/5">
               <div className="flex items-center gap-3">
                 <Bell className="h-4 w-4 text-warning" />

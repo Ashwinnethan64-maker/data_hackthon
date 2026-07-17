@@ -81,9 +81,19 @@ function NetworkPageInner() {
 
   return (
     <div className="relative flex h-full overflow-hidden bg-navy">
+      {/* Mobile Backdrop */}
+      {isFiltersOpen && (
+        <div 
+          className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm lg:hidden"
+          onClick={() => setIsFiltersOpen(false)}
+        />
+      )}
+
       {/* Left sidebar */}
       <div
-        className="flex-shrink-0 overflow-hidden transition-all duration-300"
+        className={`flex-shrink-0 transition-all duration-300 z-50 bg-navy ${
+          isFiltersOpen ? 'fixed inset-y-0 left-0 w-64 border-r border-white/10 lg:static' : 'fixed -left-64 lg:static w-0 overflow-hidden'
+        }`}
         style={{ width: isFiltersOpen ? 256 : 0 }}
       >
         {isFiltersOpen && (
@@ -158,12 +168,8 @@ export function NetworkPage() {
     // Break out of the AppShell max-w-7xl / px-4 / py-6 container
     // so the graph fills the entire main area
     <div
-      className="fixed inset-0 z-10"
-      style={{
-        // Offset for sidebar (280px on lg+) and navbar (~57px)
-        left: 'clamp(0px, 280px, 22vw)',
-        top: 57,
-      }}
+      className="fixed inset-x-0 bottom-0 z-10 lg:left-[280px]"
+      style={{ top: 73 }} // Approx Navbar height
     >
       <ReactFlowProvider>
         <NetworkPageInner />

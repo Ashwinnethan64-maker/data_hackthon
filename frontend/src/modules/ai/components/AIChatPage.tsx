@@ -75,7 +75,7 @@ export function AIChatPage() {
         </div>
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
+      <div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-[320px_minmax(0,1fr)_320px]">
         <ConversationSidebar
           onSelectThread={setSelectedThreadId}
           recentQueries={recentQueries}

@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import { Menu } from 'lucide-react';
 import { useCrimeMap } from '../hooks/useCrimeMap';
 import { CrimeMap } from './CrimeMap';
 import { MapToolbar } from './MapToolbar';
@@ -22,6 +24,7 @@ export function CrimeMapPage() {
     clearAnalysis,
   } = useCrimeMap();
 
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const isAnalysisPanelOpen = isAnalyzing || areaAnalysis !== null || analysisError !== null;
 
   return (
@@ -40,13 +43,33 @@ export function CrimeMapPage() {
       />
 
       {/* Main area: Sidebar + Map + Analysis Panel */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden relative">
+        {/* Mobile Backdrop */}
+        {isSidebarOpen && (
+          <div 
+            className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm lg:hidden"
+            onClick={() => setIsSidebarOpen(false)}
+          />
+        )}
+        
+        {/* Mobile menu toggle inside map if needed, or we just rely on toolbar if we add it there. Actually let's add a button here to open sidebar */}
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="absolute top-4 left-4 z-30 rounded-lg border border-white/10 bg-slate-900/90 p-2.5 text-slate-300 hover:text-white lg:hidden backdrop-blur-md shadow-lg"
+        >
+          <Menu className="h-5 w-5" />
+        </button>
+
         {/* Left Sidebar */}
-        <MapSidebar
-          filters={filters}
-          onFiltersChange={updateFilters}
-          incidentCount={incidents.length}
-        />
+        <div className={`transition-all duration-300 z-50 ${isSidebarOpen ? 'fixed inset-y-0 left-0 w-64 lg:static h-full' : 'fixed -left-64 lg:static w-0 lg:w-64 overflow-hidden h-full'}`}>
+          <div className="h-full w-64">
+            <MapSidebar
+              filters={filters}
+              onFiltersChange={updateFilters}
+              incidentCount={incidents.length}
+            />
+          </div>
+        </div>
 
         {/* Map */}
         <div className="flex-1 relative overflow-hidden">

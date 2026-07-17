@@ -22,7 +22,7 @@ export function AnalyticsSidebar({ filters, onFiltersChange }: AnalyticsSidebarP
   };
 
   return (
-    <div className="w-64 bg-slate-950/80 border-r border-slate-800 p-4 flex flex-col gap-5 overflow-y-auto">
+    <div className="w-64 h-full bg-slate-950/80 border-r border-slate-800 p-4 flex flex-col gap-5 overflow-y-auto">
       <div className="space-y-1">
         <h3 className="text-xs font-bold text-slate-500 uppercase tracking-[0.2em]">Saved Reports</h3>
         <div className="flex flex-col gap-1 mt-2">

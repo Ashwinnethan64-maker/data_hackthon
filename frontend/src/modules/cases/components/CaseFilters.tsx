@@ -14,8 +14,6 @@ const CRIME_CATEGORIES = ['Burglary', 'Robbery', 'Cybercrime', 'Murder', 'Kidnap
 const DISTRICTS = ['Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi-Dharwad', 'Belagavi', 'Kalaburagi'];
 
 export function CaseFilters({ filters, setFilters, resetFilters, isOpen, onClose }: CaseFiltersProps) {
-  if (!isOpen) return null;
-
   const handleChange = (key: keyof CaseFilterOptions, value: any) => {
     setFilters({
       ...filters,
@@ -24,7 +22,21 @@ export function CaseFilters({ filters, setFilters, resetFilters, isOpen, onClose
   };
 
   return (
-    <div className="w-80 shrink-0 border border-white/10 bg-slate-900/60 rounded-2xl p-5 space-y-6 max-h-[85vh] overflow-y-auto">
+    <>
+      {/* Mobile Backdrop */}
+      {isOpen && (
+        <div 
+          className="fixed inset-0 z-30 bg-navy/80 backdrop-blur-sm lg:hidden"
+          onClick={onClose}
+        />
+      )}
+      
+      {/* Filters Panel */}
+      <div 
+        className={`fixed inset-y-0 left-0 z-40 w-80 max-w-[85vw] border-r border-white/10 bg-slate-900/95 p-5 space-y-6 overflow-y-auto transition-transform duration-300 ease-in-out lg:static lg:block lg:shrink-0 lg:rounded-2xl lg:border lg:bg-slate-900/60 lg:max-h-[85vh] lg:translate-x-0 ${
+          isOpen ? 'translate-x-0' : '-translate-x-full lg:hidden'
+        }`}
+      >
       <div className="flex items-center justify-between border-b border-white/10 pb-4">
         <div>
           <h3 className="font-semibold text-white">Filter Parameters</h3>
@@ -253,6 +265,7 @@ export function CaseFilters({ filters, setFilters, resetFilters, isOpen, onClose
           Apply
         </Button>
       </div>
-    </div>
+      </div>
+    </>
   );
 }
