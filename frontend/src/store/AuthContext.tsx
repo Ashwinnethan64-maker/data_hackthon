@@ -36,9 +36,20 @@ export function AuthProvider({ children }: PropsWithChildren) {
           return;
         }
 
+        // If the JWT_AUTH cookie is present from a previous login, manually trigger signinWithJwt
+        // to switch the SDK from its default ZcrfTokenProtocol to JwtTokenProtocol.
+        // Since the cookie is present, getJWTAuthToken() resolves immediately without calling our callback.
+        const hasJwtCookie = document.cookie.split(';').some((item) => item.trim().startsWith('JWT_AUTH='));
+        if (hasJwtCookie) {
+          try {
+            await catalyst.auth.signinWithJwt(() => Promise.resolve({ client_id: '', scopes: '', jwt_token: '' }));
+          } catch (e) {
+            console.warn("Failed to pre-initialize JWT session protocol:", e);
+          }
+        }
 
         const isAuthenticated = await catalyst.auth.isUserAuthenticated();
-        console.log(isAuthenticated);
+        console.log("Catalyst isUserAuthenticated:", isAuthenticated);
 
         if (isAuthenticated) {
           const userResponse = await catalyst.userManagement.getCurrentProjectUser();
