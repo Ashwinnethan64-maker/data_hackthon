@@ -1,0 +1,40 @@
+[
+  {
+    "ROWID": "1784290066978801",
+    "firNumber": "FIR-2026-001",
+    "crimeCategory": "Cyber Fraud",
+    "description": "Phishing attack resulting in financial loss.",
+    "incidentDate": "2026-07-17T11:00:00Z",
+    "district": "Bengaluru Urban",
+    "policeStation": "Koramangala",
+    "latitude": 12.9352,
+    "longitude": 77.6245,
+    "status": "Active",
+    "priorityLevel": "High",
+    "applicableActs": "[\"IT Act 66D\"]",
+    "victims": "[{\"name\": \"Rahul S.\", \"age\": 34, \"gender\": \"Male\"}]",
+    "accused": "[]",
+    "evidence": "[{\"type\": \"Digital Log\", \"description\": \"Server IP access logs\"}]",
+    "timeline": "[{\"status\": \"current\", \"title\": \"Investigation Started\", \"time\": \"10:00 AM\"}]",
+    "officerId": "OF-001"
+  },
+  {
+    "ROWID": "1784290066978802",
+    "firNumber": "FIR-2026-002",
+    "crimeCategory": "Robbery",
+    "description": "Armed robbery at jewelry store.",
+    "incidentDate": "2026-07-16T11:00:00Z",
+    "district": "Bengaluru Urban",
+    "policeStation": "Indiranagar",
+    "latitude": 12.9784,
+    "longitude": 77.6408,
+    "status": "Under Investigation",
+    "priorityLevel": "Critical",
+    "applicableActs": "[\"BNS 309(4)\"]",
+    "victims": "[{\"name\": \"Anjali M.\", \"age\": 45, \"gender\": \"Female\"}]",
+    "accused": "[{\"name\": \"Unknown\", \"isRepeatOffender\": true}]",
+    "evidence": "[{\"type\": \"CCTV\", \"description\": \"Video footage of suspects entering.\"}]",
+    "timeline": "[{\"status\": \"completed\", \"title\": \"FIR Filed\", \"time\": \"Yesterday\"}]",
+    "officerId": "OF-002"
+  }
+]

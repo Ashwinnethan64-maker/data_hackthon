@@ -1,4 +1,4 @@
-import type { AiConversationThread, AiMockCase } from '../types';
+import type { AiConversationThread, AiMockCase, AiResponse } from '../types';
 
 export const conversationThreads: AiConversationThread[] = [
   {
@@ -24,19 +24,46 @@ export const conversationThreads: AiConversationThread[] = [
   },
 ];
 
-export const savedSearches = [
-  'Burglary cases in Bengaluru',
-  'Cybercrime by police station',
-  'Repeat offenders across districts',
-  'IPC 302 cases from this year',
-];
-
-export const recentQueries = [
-  'Summarize FIR 104430006202600001',
-  'Find similar cases to a robbery in Bengaluru South',
-  'Explain this suspect network',
-  'Show crimes in Mysuru',
-];
+export const mockResponses: Record<string, AiResponse> = {
+  'thread-burglary': {
+    summary: 'I found 1 matching case. The strongest signal is robbery activity in Bengaluru Urban, with evidence linking the current records to nearby incidents.',
+    evidence: [
+      { label: 'Recovered tool marks', value: 'Match with 2 prior burglary scenes', source: 'Forensic report #FR-204' },
+      { label: 'CCTV review', value: 'Suspect seen near rear entry point', source: 'Station evidence log' }
+    ],
+    confidence: 0.92,
+    relatedCases: [],
+    investigationTimeline: [],
+    suggestedQuestions: [],
+    recommendedActions: [],
+    applicableActs: ['IPC 457', 'IPC 380']
+  },
+  'thread-repeat-offenders': {
+    summary: 'Multiple repeat offenders are linked across districts via shared phone numbers.',
+    evidence: [
+      { label: 'Phone trace', value: 'Device active in same district on multiple incidents', source: 'CDR summary' },
+      { label: 'Route analysis', value: 'Similar escape path seen in 3 nearby cases', source: 'Movement log' }
+    ],
+    confidence: 0.88,
+    relatedCases: [],
+    investigationTimeline: [],
+    suggestedQuestions: [],
+    recommendedActions: [],
+    applicableActs: ['IPC 392', 'IPC 34']
+  },
+  'thread-hotspots': {
+    summary: 'Crime hotspots in Mysuru concentrate around market areas during evenings.',
+    evidence: [
+      { label: 'IP history', value: 'Same IP used in 2 prior fraud complaints', source: 'Network trace' }
+    ],
+    confidence: 0.85,
+    relatedCases: [],
+    investigationTimeline: [],
+    suggestedQuestions: [],
+    recommendedActions: [],
+    applicableActs: []
+  }
+};
 
 export const mockCases: AiMockCase[] = [
   {

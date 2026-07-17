@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { X, FileDown, CheckCircle2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
-
+import { SharedModal } from './SharedModal';
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
@@ -61,47 +61,39 @@ export function ExportDialog({ isOpen, onClose, messages }: ExportDialogProps) {
   };
 
   return (
-    <div className="fixed inset-0 z-[10000] flex items-center justify-center bg-navy/80 backdrop-blur-sm">
-      <div className="w-full max-w-md bg-slate-900 border border-slate-800 rounded-xl p-5 shadow-2xl relative">
-        <button onClick={onClose} className="absolute top-4 right-4 text-slate-400 hover:text-white">
-          <X className="w-4 h-4" />
-        </button>
-        <h3 className="text-lg font-bold text-white mb-1">Export Conversation</h3>
-        <p className="text-xs text-slate-400 mb-4">Select format to save this evidence-backed transcript.</p>
+    <SharedModal isOpen={isOpen} onClose={onClose} title="Export Conversation">
+      {success ? (
+        <div className="flex flex-col items-center justify-center py-6 text-green-400 gap-2">
+          <CheckCircle2 className="w-12 h-12 animate-bounce" />
+          <span className="text-sm font-semibold">Transcript exported successfully!</span>
+        </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <button
+            onClick={() => handleExport('txt')}
+            disabled={downloading}
+            className="flex items-center gap-3 p-3 bg-slate-950/40 hover:bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl transition-all disabled:opacity-50 text-left"
+          >
+            <FileDown className="w-6 h-6 text-cyan-400" />
+            <div>
+              <span className="text-sm font-medium text-slate-200 block">Export as Text Log (.txt)</span>
+              <span className="text-xs text-slate-450 block">Best for fast case logs copying</span>
+            </div>
+          </button>
 
-        {success ? (
-          <div className="flex flex-col items-center justify-center py-6 text-green-400 gap-2">
-            <CheckCircle2 className="w-12 h-12 animate-bounce" />
-            <span className="text-sm font-semibold">Transcript exported successfully!</span>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            <button
-              onClick={() => handleExport('txt')}
-              disabled={downloading}
-              className="flex items-center gap-3 p-3 bg-slate-950/40 hover:bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl transition-all disabled:opacity-50 text-left"
-            >
-              <FileDown className="w-6 h-6 text-cyan-400" />
-              <div>
-                <span className="text-sm font-medium text-slate-200 block">Export as Text Log (.txt)</span>
-                <span className="text-xs text-slate-450 block">Best for fast case logs copying</span>
-              </div>
-            </button>
-
-            <button
-              onClick={() => handleExport('pdf')}
-              disabled={downloading}
-              className="flex items-center gap-3 p-3 bg-slate-950/40 hover:bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl transition-all disabled:opacity-50 text-left"
-            >
-              <FileDown className="w-6 h-6 text-red-400" />
-              <div>
-                <span className="text-sm font-medium text-slate-200 block">Export Executive PDF (.pdf)</span>
-                <span className="text-xs text-slate-450 block">Official case-ready layout</span>
-              </div>
-            </button>
-          </div>
-        )}
-      </div>
-    </div>
+          <button
+            onClick={() => handleExport('pdf')}
+            disabled={downloading}
+            className="flex items-center gap-3 p-3 bg-slate-950/40 hover:bg-slate-950/80 border border-slate-800 hover:border-slate-700 rounded-xl transition-all disabled:opacity-50 text-left"
+          >
+            <FileDown className="w-6 h-6 text-red-400" />
+            <div>
+              <span className="text-sm font-medium text-slate-200 block">Export Executive PDF (.pdf)</span>
+              <span className="text-xs text-slate-450 block">Official case-ready layout</span>
+            </div>
+          </button>
+        </div>
+      )}
+    </SharedModal>
   );
 }

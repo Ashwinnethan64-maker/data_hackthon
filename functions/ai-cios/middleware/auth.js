@@ -9,11 +9,23 @@ async function verifyToken(req, res, next) {
         const user = await app.userManagement().getCurrentProjectUser();
         
         if (user) {
+            let dbUser = null;
+            try {
+                const dbService = require('../services/dbService');
+                const records = await dbService.getAllRows(req, 'officers');
+                dbUser = records.find(r => r.username === user.email_id);
+            } catch (err) {
+                console.warn("[WARN] Failed to lookup user in database officers table:", err.message);
+            }
+
             // Map Catalyst user to our application's expected format
             req.user = {
                 id: user.ZUID || user.user_id,
                 username: user.email_id,
-                role: user.role_details?.role_name?.toLowerCase() || 'investigator'
+                name: dbUser?.name || (user.first_name ? `${user.first_name} ${user.last_name || ''}`.trim() : user.email_id),
+                role: dbUser?.role?.toLowerCase() || user.role_details?.role_name?.toLowerCase() || 'investigator',
+                district: dbUser?.district || 'Bengaluru',
+                policeStation: dbUser?.policeStation || 'Central Station'
             };
             return next();
         }

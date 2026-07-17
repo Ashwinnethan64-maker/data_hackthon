@@ -20,6 +20,7 @@ function normalizeCaseRecord(record) {
   return {
     ...record,
     id: record.ROWID || record.id,
+    priority: record.priorityLevel || record.priority || 'Medium',
     victims: parseJSONField(record.victims) || [],
     accused: parseJSONField(record.accused) || [],
     officer: parseJSONField(record.officer) || { name: 'Unknown', rank: 'Unknown' },
@@ -191,6 +192,10 @@ router.post('/', async (req, res) => {
     
     // Stringify JSON objects before saving to Catalyst
     const rowData = { ...req.body };
+    if (rowData.priority) {
+      rowData.priorityLevel = rowData.priority;
+      delete rowData.priority;
+    }
     ['victims', 'accused', 'officer', 'applicableActs', 'evidence', 'timeline'].forEach(key => {
       if (rowData[key] && typeof rowData[key] !== 'string') {
         rowData[key] = JSON.stringify(rowData[key]);
@@ -212,6 +217,10 @@ router.put('/:id', async (req, res) => {
     }
     
     const updateData = { ROWID: req.params.id, ...req.body };
+    if (updateData.priority) {
+      updateData.priorityLevel = updateData.priority;
+      delete updateData.priority;
+    }
     ['victims', 'accused', 'officer', 'applicableActs', 'evidence', 'timeline'].forEach(key => {
       if (updateData[key] && typeof updateData[key] !== 'string') {
         updateData[key] = JSON.stringify(updateData[key]);

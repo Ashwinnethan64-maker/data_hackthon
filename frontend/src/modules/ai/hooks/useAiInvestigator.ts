@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { conversationThreads, recentQueries, savedSearches } from '../data/mockInvestigationData';
+import { conversationThreads, mockResponses } from '../data/mockInvestigationData';
 import { generateAiResponse } from '../services/aiService';
 import type { AiConversationThread, AiMessage, AiResponse, AiContext, Language } from '../types';
 
@@ -41,7 +41,7 @@ function buildSystemMessage(lang: Language): AiMessage {
 }
 
 export function useAiInvestigator() {
-  const [threads] = useState<AiConversationThread[]>(conversationThreads);
+  const [threads, setThreads] = useState<AiConversationThread[]>(conversationThreads);
   const [selectedThreadId, setSelectedThreadId] = useState(conversationThreads[0]?.id ?? '');
 
   const [language, setLanguage] = useState<Language>('en');
@@ -49,26 +49,53 @@ export function useAiInvestigator() {
   const [isRecording, setIsRecording] = useState(false);
   const [activeSpeechMessageId, setActiveSpeechMessageId] = useState<string | null>(null);
 
-  // Initialize thread messages — each thread starts with just the system greeting
   const [messagesByThread, setMessagesByThread] = useState<Record<string, AiMessage[]>>(() =>
     conversationThreads.reduce<Record<string, AiMessage[]>>((acc, thread) => {
-      acc[thread.id] = [buildSystemMessage('en')];
+      // System greeting
+      const system = buildSystemMessage('en');
+      // User query (the thread's original query)
+      const userMsg: AiMessage = {
+        id: createMessageId('user'),
+        role: 'user',
+        content: thread.lastQuery,
+        timestamp: 'Now',
+        language: 'en',
+      };
+      // Assistant mock response for this thread
+      const response = mockResponses[thread.id] ?? FALLBACK_RESPONSE;
+      const assistantMsg: AiMessage = {
+        id: createMessageId('assistant'),
+        role: 'assistant',
+        content: response.summary,
+        timestamp: 'Now',
+        response,
+        language: 'en',
+      };
+      acc[thread.id] = [system, userMsg, assistantMsg];
       return acc;
     }, {}),
   );
 
-  const [query, setQuery] = useState('Show burglary cases in Bengaluru');
+  const [query, setQuery] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  const [activeResponse, setActiveResponse] = useState<AiResponse>(FALLBACK_RESPONSE);
+  // activeResponse will be derived from the selected thread's mock response
   const abortRef = useRef<AbortController | null>(null);
 
-  // When selected thread changes, update query to last query of that thread
+  // When the selected thread changes, clear the input field and show the latest response for that thread
   useEffect(() => {
-    const activeThread = threads.find((t) => t.id === selectedThreadId) ?? threads[0];
-    if (activeThread) {
-      setQuery(activeThread.lastQuery);
+    // Clear any lingering query so the input box stays empty
+    setQuery('');
+    // Load the most recent assistant response for the newly‑selected thread
+    const threadMessages = messagesByThread[selectedThreadId] ?? [];
+    const lastAssistant = threadMessages
+      .filter((msg) => msg.role === 'assistant')
+      .pop();
+    if (lastAssistant && lastAssistant.response) {
+      setActiveResponse(lastAssistant.response);
+    } else {
+      setActiveResponse(FALLBACK_RESPONSE);
     }
-  }, [selectedThreadId, threads]);
+  }, [selectedThreadId, messagesByThread]);
 
   // Abort any in-flight request on unmount
   useEffect(() => {
@@ -82,6 +109,29 @@ export function useAiInvestigator() {
   const sendQuery = (nextQuery: string) => {
     const trimmedQuery = nextQuery.trim();
     if (!trimmedQuery || isStreaming) return;
+
+    // Determine current thread ID, creating a new thread if needed
+    let currentThreadId = selectedThreadId;
+    if (!currentThreadId) {
+      const newThreadId = createMessageId('thread');
+      const newThread = {
+        id: newThreadId,
+        title: trimmedQuery,
+        lastQuery: trimmedQuery,
+        updatedAt: 'Just now',
+        pinned: false,
+        saved: false,
+      } as any; // cast to match AiConversationThread shape
+      setThreads((prev) => [...prev, newThread]);
+      setSelectedThreadId(newThreadId);
+      // Initialize messages for the new thread with a system message
+      const systemMsg = buildSystemMessage(language);
+      setMessagesByThread((prev) => ({
+        ...prev,
+        [newThreadId]: [systemMsg],
+      }));
+      currentThreadId = newThreadId;
+    }
 
     setQuery(trimmedQuery);
     setIsStreaming(true);
@@ -106,11 +156,16 @@ export function useAiInvestigator() {
       language,
     };
 
-    const threadMessages = messagesByThread[selectedThreadId] ?? [];
+    // Determine existing messages for the thread. If we just created the thread, include the system welcome message.
+    // Gather existing messages for the thread. If this is a newly created thread, ensure the system welcome message is included.
+    const threadMessages =
+      messagesByThread[currentThreadId] && messagesByThread[currentThreadId].length > 0
+        ? messagesByThread[currentThreadId]
+        : [buildSystemMessage(language)];
 
     setMessagesByThread((prev) => ({
       ...prev,
-      [selectedThreadId]: [...threadMessages, userMessage, streamingMessage],
+      [currentThreadId]: [...threadMessages, userMessage, streamingMessage],
     }));
 
     generateAiResponse(trimmedQuery, threadMessages, context, language)
@@ -130,7 +185,7 @@ export function useAiInvestigator() {
 
         setMessagesByThread((prev) => ({
           ...prev,
-          [selectedThreadId]: (prev[selectedThreadId] ?? []).map((m) =>
+          [currentThreadId]: (prev[currentThreadId] ?? []).map((m) =>
             m.isStreaming ? finalMessage : m,
           ),
         }));
@@ -147,7 +202,7 @@ export function useAiInvestigator() {
         };
         setMessagesByThread((prev) => ({
           ...prev,
-          [selectedThreadId]: (prev[selectedThreadId] ?? []).map((m) =>
+          [currentThreadId]: (prev[currentThreadId] ?? []).map((m) =>
             m.isStreaming ? errMessage : m,
           ),
         }));
@@ -185,12 +240,13 @@ export function useAiInvestigator() {
     }, 3000);
   };
 
+  // Set the initial active response to match the selected thread's mock response
+  const [activeResponse, setActiveResponse] = useState<AiResponse>(mockResponses[selectedThreadId] ?? FALLBACK_RESPONSE);
+
   return {
     threads,
     selectedThreadId,
     setSelectedThreadId,
-    savedSearches,
-    recentQueries,
     promptChips: defaultSuggestedPrompts,
     messages,
     query,
@@ -204,5 +260,7 @@ export function useAiInvestigator() {
     simulateSpeechToText,
     activeSpeechMessageId,
     simulateTextToSpeech,
+    // expose setter for internal updates
+    setActiveResponse,
   };
 }

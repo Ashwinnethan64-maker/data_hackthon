@@ -1,0 +1,38 @@
+[
+  {
+    "ROWID": "1784290066978701",
+    "username": "admin",
+    "password": "$2b$10$dvbyMnXS3MqkkqjQNjw/n.Qet22odjlWDXOuM2hJKN0QEVse3W4u6",
+    "name": "Admin User",
+    "role": "administrator",
+    "policeStation": "Central Station",
+    "district": "Bengaluru"
+  },
+  {
+    "ROWID": "1784290066978702",
+    "username": "officer",
+    "password": "$2b$10$IRnAURx1BE4u3JFHmVJJi.sYgigPpixabYIBUnqneHQbZ1E.ZL7oi",
+    "name": "Officer User",
+    "role": "investigator",
+    "policeStation": "Central Station",
+    "district": "Bengaluru"
+  },
+  {
+    "ROWID": "1784290066978703",
+    "username": "analyst",
+    "password": "$2b$10$YQkDgn40.RDJMmFZQ2C8r.P4.06bv/JAChbcSo5JwfqCUPK35gFlK",
+    "name": "Analyst User",
+    "role": "analyst",
+    "policeStation": "Central Station",
+    "district": "Bengaluru"
+  },
+  {
+    "ROWID": "1784290066978704",
+    "username": "supervisor",
+    "password": "$2b$10$pYLSevT8pRyPPYVGMCX4Oe0v6Yejn/CfxomKX6rPZZprTt0S18dEm",
+    "name": "Supervisor User",
+    "role": "supervisor",
+    "policeStation": "Central Station",
+    "district": "Bengaluru"
+  }
+]

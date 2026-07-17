@@ -52,6 +52,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
         console.log("Catalyst isUserAuthenticated:", isAuthenticated);
 
         if (isAuthenticated) {
+          // Fetch database profile details from the custom backend
+          try {
+            const profileRes = await fetch('/server/ai-cios/auth/me');
+            if (profileRes.ok) {
+              const dbProfile = await profileRes.json();
+              setUser({
+                id: dbProfile.id,
+                name: dbProfile.name || dbProfile.username,
+                username: dbProfile.username,
+                email: dbProfile.username,
+                role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
+                district: dbProfile.district || 'Bengaluru',
+              });
+              return;
+            }
+          } catch (err) {
+            console.warn("Failed to fetch custom database profile, falling back to Catalyst details:", err);
+          }
+
           const userResponse = await catalyst.userManagement.getCurrentProjectUser();
           const projectUser = userResponse?.content;
 
@@ -67,7 +86,18 @@ export function AuthProvider({ children }: PropsWithChildren) {
             });
           }
         } else {
-          setUser(null);
+          // Fallback to Mock User from cookie if Catalyst session is not active (development only)
+          const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
+          if (mockCookie) {
+            try {
+              const mockUser = JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
+              setUser(mockUser);
+            } catch (e) {
+              setUser(null);
+            }
+          } else {
+            setUser(null);
+          }
         }
       } catch (error: any) {
         // Catalyst Web SDK throws a network error (code 700 / net-issue) when there is no active session.
@@ -76,7 +106,19 @@ export function AuthProvider({ children }: PropsWithChildren) {
         } else {
           console.error("Error checking Catalyst session:", error);
         }
-        setUser(null);
+
+        // Check for mock user even on network error
+        const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
+        if (mockCookie) {
+          try {
+            const mockUser = JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
+            setUser(mockUser);
+          } catch (e) {
+            setUser(null);
+          }
+        } else {
+          setUser(null);
+        }
       } finally {
         setLoading(false);
       }
@@ -190,9 +232,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       },
       loginWithMockCredentials: (username: string, role: UserRole) => {
+        let displayName = username.split('@')[0].replace('.', ' ');
+        displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+        if (username.toLowerCase() === 'officer') displayName = 'Officer User';
+        else if (username.toLowerCase() === 'admin') displayName = 'Admin User';
+        else if (username.toLowerCase() === 'analyst') displayName = 'Analyst User';
+        else if (username.toLowerCase() === 'supervisor') displayName = 'Supervisor User';
+
         const mockUser: AuthUser = {
           id: 'mock-' + Date.now(),
-          name: username.split('@')[0].replace('.', ' '),
+          name: displayName,
           username: username,
           email: username + '@karnatakapolice.gov.in',
           role: role,

@@ -1,9 +1,13 @@
 // API base URL configuration mapping
 export const API_BASE_URL = '/server/ai-cios';
 
+export interface ApiRequestOptions extends RequestInit {
+  timeout?: number;
+}
+
 export async function apiRequest<T = any>(
   endpoint: string,
-  options: RequestInit = {}
+  options: ApiRequestOptions = {}
 ): Promise<T> {
   const url = `${API_BASE_URL}${endpoint}`;
   
@@ -13,9 +17,12 @@ export async function apiRequest<T = any>(
     headers.set('Content-Type', 'application/json');
   }
 
+  // AI chat endpoints can take longer, so we default to 60s. Other requests default to 15s.
+  const timeoutMs = options.timeout ?? (endpoint.startsWith('/ai') ? 60000 : 15000);
+
   // Timeout logic
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), 15000); // 15s timeout
+  const id = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const response = await fetch(url, {

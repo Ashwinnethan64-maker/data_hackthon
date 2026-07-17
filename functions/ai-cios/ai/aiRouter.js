@@ -29,7 +29,7 @@ router.post('/chat', async (req, res) => {
     const isCyber = lowerQuery.includes('cyber') || lowerQuery.includes('fraud');
     const isRepeat = lowerQuery.includes('repeat') || lowerQuery.includes('offender');
     
-    let crime = isBurglary ? 'Burglary' : isCyber ? 'Cybercrime' : context.crime;
+    let crime = isBurglary ? 'Robbery' : isCyber ? 'Fraud' : context.crime;
     
     let district = lowerQuery.includes('mysuru') ? 'Mysuru'
                  : lowerQuery.includes('bengaluru') ? 'Bengaluru'
@@ -45,8 +45,8 @@ router.post('/chat', async (req, res) => {
     let allFirs = await dbService.getAllRows(req, FIRS_TABLE);
     let filtered = allFirs;
     
-    if (crime) filtered = filtered.filter(c => c.crimeCategory && c.crimeCategory.includes(crime));
-    if (district) filtered = filtered.filter(c => c.district === district);
+    if (crime) filtered = filtered.filter(c => c.crimeCategory && c.crimeCategory.toLowerCase().includes(crime.toLowerCase()));
+    if (district) filtered = filtered.filter(c => c.district && c.district.toLowerCase().includes(district.toLowerCase()));
     if (status) {
       if (status === 'Closed') filtered = filtered.filter(c => c.status === 'Closed');
       else filtered = filtered.filter(c => c.status !== 'Closed');
@@ -74,25 +74,66 @@ router.post('/chat', async (req, res) => {
     let summary = '';
     const primaryCase = filtered[0];
 
-    if (filtered.length === 0) {
-      summary = language === 'kn' ? KANNADA_TRANSLATIONS.noResults : 'I could not find any matching cases based on your query.';
-    } else {
-      let caseDesc = primaryCase.crimeCategory ? primaryCase.crimeCategory.toLowerCase() : 'unknown';
-      let distDesc = primaryCase.district || 'the region';
+    // Try utilizing Catalyst QuickML GLM serving
+    try {
+      const quickmlService = require('../services/quickmlService');
       
-      if (language === 'kn') {
-        let sumBase = KANNADA_TRANSLATIONS.summaryBase.replace('{count}', filtered.length);
-        let signal = KANNADA_TRANSLATIONS.strongestSignal.replace('{district}', distDesc).replace('{crime}', caseDesc);
-        summary = sumBase + signal;
+      // Build conversational history memory
+      const conversationMemory = messages.slice(-4).map(msg => ({
+        role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+        content: msg.content
+      }));
+
+      const systemPrompt = `You are an AI Crime Intelligence Assistant for the Karnataka State Police. 
+Analyze the provided cases, extract evidence, detect suspect connections, and answer the user's query.
+Be extremely concise, professional, and factual. Cite the FIR numbers when referencing cases.
+Do not output any internal reasoning, draft thinking, or step-by-step chain-of-thought analysis. Output ONLY the final response.`;
+
+      const userPrompt = `User Query: "${query}"
+Retrieved Case Context:
+${JSON.stringify(filtered.slice(0, 3).map(c => ({
+  firNumber: c.firNumber,
+  crimeCategory: c.crimeCategory,
+  description: c.description,
+  district: c.district,
+  policeStation: c.policeStation,
+  incidentDate: c.incidentDate,
+  status: c.status,
+  priority: c.priorityLevel || c.priority || 'Medium'
+})), null, 2)}
+
+Provide a summary answering the user query.`;
+
+      const messagesPayload = [
+        { role: 'system', content: systemPrompt },
+        ...conversationMemory,
+        { role: 'user', content: userPrompt }
+      ];
+
+      summary = await quickmlService.chatWithGLM(req, messagesPayload);
+    } catch (err) {
+      console.warn('[WARN] QuickML GLM query failed, using rule-based fallback:', err.message);
+
+      if (filtered.length === 0) {
+        summary = language === 'kn' ? KANNADA_TRANSLATIONS.noResults : 'I could not find any matching cases based on your query.';
       } else {
-        summary = `I found ${filtered.length} matching case${filtered.length === 1 ? '' : 's'}. `;
-        if (isRepeat) {
-          summary += `There is evidence of repeat offenders operating in this dataset. `;
+        let caseDesc = primaryCase.crimeCategory ? primaryCase.crimeCategory.toLowerCase() : 'unknown';
+        let distDesc = primaryCase.district || 'the region';
+        
+        if (language === 'kn') {
+          let sumBase = KANNADA_TRANSLATIONS.summaryBase.replace('{count}', filtered.length);
+          let signal = KANNADA_TRANSLATIONS.strongestSignal.replace('{district}', distDesc).replace('{crime}', caseDesc);
+          summary = sumBase + signal;
         } else {
-          summary += `The strongest signal is ${caseDesc} activity in ${distDesc}, with evidence linking the current records to nearby incidents. `;
-        }
-        if (messages.length > 2) {
-          summary += `Following up on our earlier conversation, these matches refine the previous search.`;
+          summary = `I found ${filtered.length} matching case${filtered.length === 1 ? '' : 's'}. `;
+          if (isRepeat) {
+            summary += `There is evidence of repeat offenders operating in this dataset. `;
+          } else {
+            summary += `The strongest signal is ${caseDesc} activity in ${distDesc}, with evidence linking the current records to nearby incidents. `;
+          }
+          if (messages.length > 2) {
+            summary += `Following up on our earlier conversation, these matches refine the previous search.`;
+          }
         }
       }
     }
@@ -109,11 +150,18 @@ router.post('/chat', async (req, res) => {
       }
     }
 
+    // Map evidence items to expected frontend format: { label, value, source }
+    const formattedEvidence = evidenceItems.map(item => ({
+      label: item.label || item.type || 'Evidence Log',
+      value: item.value || item.description || 'Verified evidence log record.',
+      source: item.source || `Case ${primaryCase.firNumber || 'Record'}`
+    }));
+
     const confidence = filtered.length > 0 ? (lowerQuery.includes('summarize') ? 95 : 88) : 50;
 
     const responsePayload = {
       summary,
-      evidence: evidenceItems,
+      evidence: formattedEvidence,
       confidence,
       relatedCases: filtered.slice(0, 5).map(c => ({
         firNumber: c.firNumber,

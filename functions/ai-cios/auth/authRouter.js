@@ -108,7 +108,8 @@ router.get('/me', verifyToken, (req, res) => {
     name: req.user.name, 
     role: req.user.role,
     username: req.user.username,
-    district: req.user.district
+    district: req.user.district,
+    policeStation: req.user.policeStation
   });
 });
 

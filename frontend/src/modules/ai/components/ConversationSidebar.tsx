@@ -8,99 +8,52 @@ interface ConversationSidebarProps {
   threads: AiConversationThread[];
   selectedThreadId: string;
   onSelectThread: (threadId: string) => void;
-  savedSearches: string[];
-  recentQueries: string[];
 }
 
 export function ConversationSidebar({
   threads,
   selectedThreadId,
   onSelectThread,
-  savedSearches,
-  recentQueries,
 }: ConversationSidebarProps) {
   return (
-    <div className="space-y-4">
-      <Card>
+    <Card className="p-4 space-y-4 h-full flex flex-col">
+      <div className="flex items-center justify-between border-b border-white/5 pb-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
           <History className="h-4 w-4 text-cyan" />
-          Conversation History
+          <span>Active Threads & Searches</span>
         </div>
-        <div className="mt-4 space-y-2">
-          {threads.map((thread) => {
-            const isActive = selectedThreadId === thread.id;
+      </div>
 
-            return (
-              <button
-                key={thread.id}
-                className={cn(
-                  'w-full rounded-2xl border px-4 py-3 text-left transition',
-                  isActive
-                    ? 'border-cyan/40 bg-cyan/10'
-                    : 'border-white/10 bg-white/5 hover:border-white/20 hover:bg-white/10',
-                )}
-                onClick={() => onSelectThread(thread.id)}
-                type="button"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-white">{thread.title}</p>
-                    <p className="mt-1 text-xs text-slate-400">{thread.lastQuery}</p>
+      <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+        {/* Threads */}
+        <div className="space-y-1.5">
+          <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Recent Conversations</p>
+          <div className="space-y-1.5">
+            {threads.map((thread) => {
+              const isActive = selectedThreadId === thread.id;
+              return (
+                <button
+                  key={thread.id}
+                  className={cn(
+                    'w-full rounded-xl border px-3 py-2 text-left transition text-xs',
+                    isActive
+                      ? 'border-cyan/40 bg-cyan/10'
+                      : 'border-white/5 bg-white/5 hover:border-white/25 hover:bg-white/10',
+                  )}
+                  onClick={() => onSelectThread(thread.id)}
+                  type="button"
+                >
+                  <div className="flex items-center justify-between gap-2">
+                    <p className="font-semibold text-white truncate">{thread.title}</p>
+                    {thread.pinned && <Pin className="h-3 w-3 text-cyan shrink-0" />}
                   </div>
-                  {thread.pinned ? <Pin className="h-4 w-4 text-cyan" /> : null}
-                </div>
-                <div className="mt-3 flex items-center justify-between text-xs text-slate-400">
-                  <span>{thread.updatedAt}</span>
-                  {thread.saved ? <Badge variant="info">Saved</Badge> : null}
-                </div>
-              </button>
-            );
-          })}
+                  <p className="mt-0.5 text-[10px] text-slate-400 truncate">{thread.lastQuery}</p>
+                </button>
+              );
+            })}
+          </div>
         </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Bookmark className="h-4 w-4 text-cyan" />
-          Pinned Investigations
-        </div>
-        <p className="mt-3 text-sm text-slate-400">Track important investigations and return to them quickly.</p>
-        <div className="mt-4 flex flex-wrap gap-2">
-          {['Bengaluru Burglary Cluster', 'Cybercrime Spike', 'Repeat Offender Watch'].map((item) => (
-            <Badge key={item} variant="neutral">
-              {item}
-            </Badge>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <Search className="h-4 w-4 text-cyan" />
-          Saved Searches
-        </div>
-        <div className="mt-4 space-y-2 text-sm text-slate-300">
-          {savedSearches.map((item) => (
-            <div key={item} className="rounded-2xl border border-white/5 bg-white/5 px-3 py-3">
-              {item}
-            </div>
-          ))}
-        </div>
-      </Card>
-
-      <Card>
-        <div className="flex items-center gap-2 text-sm font-semibold text-white">
-          <History className="h-4 w-4 text-cyan" />
-          Recent Queries
-        </div>
-        <div className="mt-4 space-y-2 text-sm text-slate-300">
-          {recentQueries.map((item) => (
-            <div key={item} className="rounded-2xl border border-white/5 bg-white/5 px-3 py-3">
-              {item}
-            </div>
-          ))}
-        </div>
-      </Card>
-    </div>
+      </div>
+    </Card>
   );
 }
