@@ -1,7 +1,5 @@
 import { apiRequest } from '../utils/api';
 
-const API_BASE_URL = '/server/ai-cios-api';
-
 export interface DashboardAnalytics {
   totalFirs: number;
   activeCases: number;

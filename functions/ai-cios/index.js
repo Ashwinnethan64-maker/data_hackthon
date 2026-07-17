@@ -2,20 +2,32 @@ const express = require('express');
 require('dotenv').config();
 const { verifyToken } = require('./middleware/auth');
 
+// Import routers
+const authRouter = require('./auth/authRouter');
+const casesRouter = require('./cases/casesRouter');
+const analyticsRouter = require('./analytics/analyticsRouter');
+const aiRouter = require('./ai/aiRouter');
+const networkRouter = require('./network/networkRouter');
+const mapRouter = require('./map/mapRouter');
+const reportsRouter = require('./reports/reportsRouter');
+const settingsRouter = require('./settings/settingsRouter');
+const systemRouter = require('./system/systemRouter');
+
 const app = express();
 app.use(express.json());
 
-// Authentication is now fully handled by Catalyst via the frontend.
-// The backend simply validates the Catalyst session via verifyToken.
+// Unprotected routes
+app.use('/system', systemRouter);
+app.use('/auth', authRouter);
 
-// Protect every secured API
-const protectedRoutes = ['/dashboard', '/cases', '/reports', '/map', '/analytics', '/ai', '/settings'];
-
-protectedRoutes.forEach(route => {
-    app.use(route, verifyToken, (req, res) => {
-        res.json({ message: `Access granted to ${route}` });
-    });
-});
+// Protected routes (require valid Catalyst session)
+app.use('/cases', verifyToken, casesRouter);
+app.use('/analytics', verifyToken, analyticsRouter);
+app.use('/ai', verifyToken, aiRouter);
+app.use('/network', verifyToken, networkRouter);
+app.use('/map', verifyToken, mapRouter);
+app.use('/reports', verifyToken, reportsRouter);
+app.use('/settings', verifyToken, settingsRouter);
 
 module.exports = app;
 

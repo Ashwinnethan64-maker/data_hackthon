@@ -8,3 +8,22 @@ coverage
 .env.local
 frontend/node_modules
 frontend/dist
+
+# Catalyst local configuration and emulator build files
+.catalystrc
+.build/
+frontend/.env
+catalyst-debug.log
+
+# TypeScript build cache
+*.tsbuildinfo
+
+# Generated Vite config artifacts
+vite.config.js
+vite.config.js.map
+vite.config.d.ts
+
+# Local scratch directories
+scratch/
+
+

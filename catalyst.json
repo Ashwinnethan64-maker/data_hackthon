@@ -1,6 +1,6 @@
 {
   "client": {
-    "source": "frontend"
+    "source": "frontend/dist"
   },
   "functions": {
     "targets": [

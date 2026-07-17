@@ -191,4 +191,90 @@ router.delete('/officers/:id', verifyToken, async (req, res) => {
   }
 });
 
+// POST google-login
+router.post('/google-login', async (req, res) => {
+  try {
+    const { access_token } = req.body;
+    if (!access_token) {
+      return res.status(400).json({ error: 'Access token required' });
+    }
+
+    // Call Google's userinfo API using the access token
+    const googleResponse = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+      headers: {
+        Authorization: `Bearer ${access_token}`
+      }
+    });
+
+    if (!googleResponse.ok) {
+      return res.status(401).json({ error: 'Invalid Google access token' });
+    }
+
+    const googleUser = await googleResponse.json();
+    const { email, given_name, family_name, name } = googleUser;
+
+    if (!email) {
+      return res.status(400).json({ error: 'Email not provided by Google account' });
+    }
+
+    // Check if user exists in our local Catalyst DB 'officers' table
+    const records = await dbService.getAllRows(req, TABLE_NAME);
+    let user = records.find(r => r.username === email);
+
+    if (!user) {
+      // If user doesn't exist, auto-register them in Catalyst officers table
+      const salt = await bcrypt.genSalt(10);
+      // Create a secure dummy password for database constraint compatibility
+      const dummyPassword = require('crypto').randomBytes(16).toString('hex');
+      const hashedPassword = await bcrypt.hash(dummyPassword, salt);
+
+      const userData = {
+        username: email,
+        password: hashedPassword,
+        name: name || `${given_name || ''} ${family_name || ''}`.trim() || email.split('@')[0],
+        role: 'investigator',
+        policeStation: 'Central Station',
+        district: 'Bengaluru'
+      };
+
+      user = await dbService.insertRow(req, TABLE_NAME, userData);
+      console.log(`[DEBUG] Automatically registered new Google user in database: ${email}`);
+    }
+
+    // Now, generate a Catalyst Custom User token
+    const catalyst = require('zcatalyst-sdk-node');
+    const app = res.locals.catalyst || catalyst.initialize(req);
+    
+    // Call generateCustomToken to get Catalyst JWT
+    const tokenResponse = await app.userManagement().generateCustomToken({
+      type: 'web',
+      user_details: {
+        email_id: email,
+        first_name: given_name || name || 'Google',
+        last_name: family_name || 'User'
+      }
+    });
+
+    // If it's a string, wrap it. If it's an object, send it directly.
+    if (typeof tokenResponse === 'string') {
+      res.json({
+        success: true,
+        jwt_token: tokenResponse,
+        client_id: app.config?.zaid || app.config?.client_id
+      });
+    } else {
+      res.json({
+        success: true,
+        jwt_token: tokenResponse.jwt_token || tokenResponse.token || tokenResponse,
+        client_id: tokenResponse.client_id,
+        scopes: tokenResponse.scopes
+      });
+    }
+
+  } catch (error) {
+    console.error('Google login error:', error);
+    res.status(500).json({ error: 'Google login failed due to server error' });
+  }
+});
+
 module.exports = router;

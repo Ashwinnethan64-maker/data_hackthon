@@ -6,12 +6,23 @@ import { useAuth } from '../store/AuthContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithGoogle, user, loading } = useAuth();
+  const { loginWithGoogle, loginWithMockCredentials, user, loading } = useAuth();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  const handleGoogleLogin = async () => {
+    setIsSubmitting(true);
+    setError('');
+    try {
+      await loginWithGoogle();
+    } catch (err: any) {
+      setError(err.message || 'Failed to authenticate with Google');
+      setIsSubmitting(false);
+    }
+  };
 
   // If already logged in, redirect to dashboard
   if (user) {
@@ -27,20 +38,26 @@ export function LoginPage() {
     );
   }
 
-  const handleGoogleLogin = () => {
-    try {
-      setIsSubmitting(true);
-      setError('');
-      loginWithGoogle();
-    } catch (err: any) {
-      setError(err.message || 'Google login failed. Please try again.');
-      setIsSubmitting(false);
-    }
-  };
-
   const handleManualLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    setError('Manual login is disabled. Please use "Continue with Google".');
+    if (!username.trim()) {
+      setError('Please enter a username.');
+      return;
+    }
+    setIsSubmitting(true);
+    setError('');
+    
+    // Assign role based on username content for quick role testing
+    let role: any = 'investigator';
+    const lowUser = username.toLowerCase();
+    if (lowUser.includes('analyst')) role = 'analyst';
+    else if (lowUser.includes('supervisor')) role = 'supervisor';
+    else if (lowUser.includes('admin')) role = 'administrator';
+    
+    setTimeout(() => {
+      loginWithMockCredentials(username, role);
+      setIsSubmitting(false);
+    }, 500);
   };
 
   return (
@@ -77,7 +94,7 @@ export function LoginPage() {
             <Card className="w-full max-w-md p-6 sm:p-8">
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan/80">Secure access</p>
               <h2 className="mt-2 text-2xl font-bold text-white">Login</h2>
-              <p className="mt-2 text-sm text-slate-400">Use your system credentials to continue.</p>
+              <p className="mt-2 text-sm text-slate-400">Use your credentials or bypass using mock credentials.</p>
 
               <form className="mt-8 space-y-4" onSubmit={handleManualLogin}>
                 {error && (
@@ -90,11 +107,10 @@ export function LoginPage() {
                   <span>Username</span>
                   <input
                     className="w-full rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan/60"
-                    placeholder="officer.ash"
+                    placeholder="e.g., investigator.ash (or analyst.bob / supervisor.chief)"
                     type="text"
                     value={username}
                     onChange={(e) => setUsername(e.target.value)}
-                    disabled
                   />
                 </label>
                 <label className="block space-y-2 text-sm text-slate-300">
@@ -105,11 +121,28 @@ export function LoginPage() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    disabled
                   />
                 </label>
+                
                 <Button
                   className="mt-2 w-full"
+                  type="submit"
+                  disabled={isSubmitting}
+                >
+                  {isSubmitting ? 'Signing In...' : 'Sign In'}
+                </Button>
+
+                <div className="relative my-4 flex items-center justify-center">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-white/10"></div>
+                  </div>
+                  <span className="relative bg-[#0d1329] px-3 text-xs text-slate-500 uppercase tracking-widest">
+                    Or
+                  </span>
+                </div>
+
+                <Button
+                  className="w-full border border-white/10 bg-transparent hover:bg-white/5 text-slate-200"
                   type="button"
                   onClick={handleGoogleLogin}
                   disabled={isSubmitting}
@@ -133,7 +166,7 @@ export function LoginPage() {
                         d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"
                       />
                     </svg>
-                    {isSubmitting ? 'Authenticating...' : 'Continue with Google'}
+                    Continue with Google
                   </div>
                 </Button>
               </form>
