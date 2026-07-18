@@ -1,10 +1,12 @@
+import { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Clock, MapPin, ShieldAlert, AlertTriangle, Sparkles } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowLeft, Clock, MapPin, ShieldAlert, AlertTriangle, Sparkles, ChevronDown, CheckCircle2, AlertCircle } from 'lucide-react';
 import { Badge } from '../components/Badge';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
+import { Modal } from '../components/Modal';
 import { caseService } from '../modules/cases/services/caseService';
 import { CaseStatusBadge } from '../modules/cases/components/CaseStatusBadge';
 import { PriorityBadge } from '../modules/cases/components/PriorityBadge';
@@ -13,6 +15,9 @@ import { AccusedCard } from '../modules/cases/components/AccusedCard';
 import { OfficerCard } from '../modules/cases/components/OfficerCard';
 import { EvidenceCard } from '../modules/cases/components/EvidenceCard';
 import { QuickActionsPanel } from '../modules/cases/components/QuickActionsPanel';
+import { CaseFormModal } from '../modules/cases/components/CaseFormModal';
+import { OfficerAssignModal } from '../modules/cases/components/OfficerAssignModal';
+import type { CaseRecord } from '../modules/cases/types';
 
 import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
 import L from 'leaflet';
@@ -35,6 +40,8 @@ const CRIME_MARKER_CONFIG: Record<string, { color: string; glow: string; symbol:
   'Assault':            { color: '#ef4444', glow: 'rgba(239,68,68,0.6)',   symbol: '👊' },
   'Rioting':            { color: '#e11d48', glow: 'rgba(225,29,72,0.6)',   symbol: '🔥' },
 };
+
+const STATUS_CYCLE: Array<CaseRecord['status']> = ['Open', 'Under Investigation', 'Under Review', 'Closed'];
 
 function createCrimeIcon(category: string): L.DivIcon {
   const config = CRIME_MARKER_CONFIG[category] || CRIME_MARKER_CONFIG['Assault'];
@@ -85,6 +92,69 @@ function createCrimeIcon(category: string): L.DivIcon {
 export function CaseDetailsPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
+
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isStatusMenuOpen, setIsStatusMenuOpen] = useState(false);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
+
+  const showSuccess = (msg: string) => {
+    setSuccessMessage(msg);
+    setTimeout(() => setSuccessMessage(null), 3000);
+  };
+
+  const showError = (msg: string) => {
+    setMutationError(msg);
+    setTimeout(() => setMutationError(null), 5000);
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: ({ caseId, payload }: { caseId: string; payload: any }) =>
+      caseService.updateCase(caseId, payload),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['case', id] });
+      queryClient.invalidateQueries({ queryKey: ['cases'] });
+    },
+    onError: (err: any) => showError(err.message || 'Failed to update case.'),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: (caseId: string) => caseService.deleteCase(caseId),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['cases'] });
+      navigate('/cases');
+    },
+    onError: (err: any) => showError(err.message || 'Failed to archive case.'),
+  });
+
+  const isSaving = updateMutation.isPending || deleteMutation.isPending;
+
+  const handleEditSubmit = async (formData: any) => {
+    if (!record) return;
+    await updateMutation.mutateAsync({ caseId: record.id, payload: formData });
+    showSuccess('Case details updated successfully.');
+  };
+
+  const handleAssignOfficerSubmit = async (officerId: string) => {
+    if (!record) return;
+    await updateMutation.mutateAsync({ caseId: record.id, payload: { officerId } });
+    showSuccess('Investigating officer reassigned.');
+  };
+
+  const handleStatusChange = async (newStatus: CaseRecord['status']) => {
+    if (!record) return;
+    setIsStatusMenuOpen(false);
+    await updateMutation.mutateAsync({ caseId: record.id, payload: { status: newStatus } });
+    showSuccess(`Status updated to "${newStatus}".`);
+  };
+
+  const handleDeleteCase = async () => {
+    if (!record) return;
+    await deleteMutation.mutateAsync(record.id);
+  };
 
   const { data: record, isLoading, isError } = useQuery({
     queryKey: ['case', id],
@@ -133,6 +203,7 @@ export function CaseDetailsPage() {
   const lat = record.latitude || 15.3173;
   const lng = record.longitude || 75.7139;
   const center: [number, number] = [lat, lng];
+  const currentStatusIdx = STATUS_CYCLE.indexOf(record.status);
 
   return (
     <div className="space-y-6">
@@ -152,6 +223,34 @@ export function CaseDetailsPage() {
         </Button>
       </div>
 
+      {/* Inline feedback banners */}
+      <AnimatePresence>
+        {successMessage && (
+          <motion.div
+            key="success"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-400"
+          >
+            <CheckCircle2 className="h-4 w-4 shrink-0" />
+            {successMessage}
+          </motion.div>
+        )}
+        {mutationError && (
+          <motion.div
+            key="error"
+            initial={{ opacity: 0, y: -8 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -8 }}
+            className="flex items-center gap-2.5 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400"
+          >
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            {mutationError}
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Header Profile Section */}
       <section className="space-y-2">
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan/80">Intelligence Workspace</p>
@@ -163,11 +262,56 @@ export function CaseDetailsPage() {
             </p>
           </div>
           <div className="flex items-center gap-3 shrink-0">
-            <CaseStatusBadge status={record.status} />
+            {/* Inline status selector */}
+            <div className="relative">
+              <button
+                onClick={() => setIsStatusMenuOpen(v => !v)}
+                disabled={isSaving}
+                className="flex items-center gap-1.5 rounded-xl border border-white/10 bg-slate-900 px-3 py-1.5 text-xs font-semibold text-slate-300 transition hover:border-white/20 hover:text-white disabled:opacity-50"
+              >
+                <CaseStatusBadge status={record.status} />
+                <ChevronDown className={`h-3.5 w-3.5 transition-transform ${isStatusMenuOpen ? 'rotate-180' : ''}`} />
+              </button>
+              <AnimatePresence>
+                {isStatusMenuOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 4, scale: 0.97 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 4, scale: 0.97 }}
+                    className="absolute right-0 top-full mt-1.5 z-50 min-w-[170px] rounded-xl border border-white/10 bg-slate-900 shadow-xl shadow-black/40 overflow-hidden"
+                  >
+                    {STATUS_CYCLE.map((s, i) => (
+                      <button
+                        key={s}
+                        onClick={() => handleStatusChange(s)}
+                        className={`w-full flex items-center gap-2.5 px-3 py-2.5 text-xs text-left transition hover:bg-white/5 ${s === record.status ? 'text-cyan font-semibold' : 'text-slate-300'}`}
+                      >
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${
+                          i === 0 ? 'bg-emerald-400' :
+                          i === 1 ? 'bg-cyan' :
+                          i === 2 ? 'bg-amber-400' :
+                          'bg-slate-500'
+                        }`} />
+                        {s}
+                        {s === record.status && <span className="ml-auto text-cyan">✓</span>}
+                      </button>
+                    ))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
             <PriorityBadge priority={record.priority} />
           </div>
         </div>
       </section>
+
+      {/* Saving overlay indicator */}
+      {isSaving && (
+        <div className="flex items-center gap-2 text-xs text-slate-400">
+          <div className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-slate-600 border-t-cyan" />
+          Saving changes...
+        </div>
+      )}
 
       {/* Grid Layout Dashboard */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
@@ -298,7 +442,12 @@ export function CaseDetailsPage() {
         {/* Right sidebar block (Span 1) */}
         <div className="space-y-6">
           {/* Quick Actions Panel */}
-          <QuickActionsPanel record={record} />
+          <QuickActionsPanel
+            record={record}
+            onAssignOfficer={() => setIsAssignModalOpen(true)}
+            onEdit={() => setIsEditModalOpen(true)}
+            onDelete={() => setIsDeleteConfirmOpen(true)}
+          />
 
           {/* Assigned Officer */}
           <Card className="space-y-3">
@@ -372,6 +521,70 @@ export function CaseDetailsPage() {
           </Card>
         </div>
       </div>
+
+      {/* Case Edit Modal */}
+      <CaseFormModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        onSubmit={handleEditSubmit}
+        initialData={record}
+      />
+
+      {/* Officer Assignment Modal */}
+      <OfficerAssignModal
+        isOpen={isAssignModalOpen}
+        onClose={() => setIsAssignModalOpen(false)}
+        onSubmit={handleAssignOfficerSubmit}
+        currentOfficerName={record?.officer?.name}
+      />
+
+      {/* Archive Confirmation Modal */}
+      <Modal
+        isOpen={isDeleteConfirmOpen}
+        onClose={() => setIsDeleteConfirmOpen(false)}
+        title="Archive Case File"
+      >
+        <div className="space-y-5 text-left">
+          <div className="flex items-start gap-3 rounded-xl border border-amber-500/20 bg-amber-500/10 p-4">
+            <AlertTriangle className="h-5 w-5 text-amber-400 shrink-0 mt-0.5" />
+            <div>
+              <p className="text-sm font-semibold text-amber-300">This action cannot be undone</p>
+              <p className="mt-1 text-xs text-slate-400">
+                Case file <span className="font-mono text-white">{record.firNumber}</span> will be archived and removed from the active case explorer. The record is retained in the datastore but marked as inactive.
+              </p>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3">
+            <button
+              onClick={() => setIsDeleteConfirmOpen(false)}
+              className="rounded-xl border border-white/10 bg-white/5 px-4 py-2 text-sm text-slate-300 transition hover:bg-white/10 hover:text-white"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={async () => {
+                setIsDeleteConfirmOpen(false);
+                await handleDeleteCase();
+              }}
+              disabled={deleteMutation.isPending}
+              className="rounded-xl bg-red-600/80 px-4 py-2 text-sm font-semibold text-white transition hover:bg-red-600 disabled:opacity-50 flex items-center gap-2"
+            >
+              {deleteMutation.isPending && (
+                <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/30 border-t-white" />
+              )}
+              Archive Case
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Click-outside handler for status menu */}
+      {isStatusMenuOpen && (
+        <div
+          className="fixed inset-0 z-40"
+          onClick={() => setIsStatusMenuOpen(false)}
+        />
+      )}
     </div>
   );
 }

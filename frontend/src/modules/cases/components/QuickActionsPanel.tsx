@@ -1,41 +1,40 @@
 import { useNavigate } from 'react-router-dom';
-import { Brain, FileText, Network, MapPin, Download, UserCheck } from 'lucide-react';
+import { Brain, FileText, Network, MapPin, Download, UserCheck, Edit3, Trash2 } from 'lucide-react';
 import { Card } from '../../../components/Card';
 import type { CaseRecord } from '../types';
 
 interface QuickActionsPanelProps {
   record: CaseRecord;
   onAssignOfficer?: () => void;
+  onEdit?: () => void;
+  onDelete?: () => void;
 }
 
 export function QuickActionsPanel({
   record,
   onAssignOfficer,
+  onEdit,
+  onDelete,
 }: QuickActionsPanelProps) {
   const navigate = useNavigate();
 
   const handleOpenAi = () => {
-    // Navigate to AI Investigator workspace, pre-populating query context
     navigate('/ai', { state: { query: `Analyze case ${record.firNumber} details, suspect involvement, acts, and evidence status.` } });
   };
 
   const handleOpenNetwork = () => {
-    // Navigate to Criminal Network workspace, pre-populating target case node
     navigate('/network', { state: { caseId: record.id, firNumber: record.firNumber } });
   };
 
   const handleLocateOnMap = () => {
-    // Navigate to GIS map and focus on the coordinates of this case
     navigate('/map', { state: { focusIncidentId: record.id, center: [record.latitude, record.longitude] } });
   };
 
   const handleExportPdf = () => {
-    // Open the backend export-pdf route to download the official FIR PDF
     window.open(`/server/ai-cios/cases/${record.id || (record as any).ROWID}/export-pdf`, '_blank');
   };
 
   const handleGenerateSummary = () => {
-    // Navigate to AI Investigator workspace, requesting a formatted executive summary of this case
     navigate('/ai', { state: { query: `Generate an executive intelligence summary report of FIR ${record.firNumber}. Include incident details, victim/accused summaries, acts, and timeline.` } });
   };
 
@@ -79,13 +78,15 @@ export function QuickActionsPanel({
           <span>Export PDF</span>
         </button>
 
-        <button
-          onClick={onAssignOfficer}
-          className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
-        >
-          <UserCheck className="h-4 w-4 text-cyan" />
-          <span>Assign Officer</span>
-        </button>
+        {onAssignOfficer && (
+          <button
+            onClick={onAssignOfficer}
+            className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
+          >
+            <UserCheck className="h-4 w-4 text-cyan" />
+            <span>Assign Officer</span>
+          </button>
+        )}
 
         <button
           onClick={handleGenerateSummary}
@@ -94,6 +95,26 @@ export function QuickActionsPanel({
           <FileText className="h-4 w-4 text-cyan" />
           <span>Generate Summary</span>
         </button>
+
+        {onEdit && (
+          <button
+            onClick={onEdit}
+            className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
+          >
+            <Edit3 className="h-4 w-4 text-cyan" />
+            <span>Edit Details</span>
+          </button>
+        )}
+
+        {onDelete && (
+          <button
+            onClick={onDelete}
+            className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-red-500/40 hover:bg-red-500/10 hover:text-white"
+          >
+            <Trash2 className="h-4 w-4 text-red-500" />
+            <span>Archive Case</span>
+          </button>
+        )}
       </div>
     </Card>
   );

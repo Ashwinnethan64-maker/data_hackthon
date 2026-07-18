@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
 const PDFDocument = require('pdfkit');
+const { verifyToken } = require('../middleware/auth');
 
 const TABLE_NAME = 'firs';
 
@@ -385,12 +386,29 @@ router.post('/', async (req, res) => {
       return res.status(400).json({ error: 'Invalid input data' });
     }
     
-    // Stringify JSON objects before saving to Catalyst
     const rowData = { ...req.body };
     if (rowData.priority) {
       rowData.priorityLevel = rowData.priority;
       delete rowData.priority;
     }
+
+    // Auto-assign the authenticated officer if none was provided
+    if (!rowData.officerId && req.user) {
+      try {
+        const officers = await dbService.getAllRows(req, 'officers');
+        const matchedOfficer = officers.find(o =>
+          o.username === req.user.username ||
+          String(o.ROWID) === String(req.user.id) ||
+          String(o.id) === String(req.user.id)
+        );
+        if (matchedOfficer) {
+          rowData.officerId = String(matchedOfficer.ROWID || matchedOfficer.id);
+        }
+      } catch (err) {
+        console.warn('[WARN] Could not resolve officer for new case:', err.message);
+      }
+    }
+
     ['victims', 'accused', 'officer', 'applicableActs', 'evidence', 'timeline'].forEach(key => {
       if (rowData[key] && typeof rowData[key] !== 'string') {
         rowData[key] = JSON.stringify(rowData[key]);

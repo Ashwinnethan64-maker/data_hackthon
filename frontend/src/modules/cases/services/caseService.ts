@@ -30,4 +30,32 @@ export const caseService = {
   async getCaseByFir(firNumber: string): Promise<CaseRecord | undefined> {
     return apiRequest<CaseRecord | undefined>(`/cases/${encodeURIComponent(firNumber)}`).catch(() => undefined);
   },
+
+  async createCase(record: Omit<CaseRecord, 'id' | 'officer'> & { officerId?: string }): Promise<CaseRecord> {
+    return apiRequest<CaseRecord>('/cases', {
+      method: 'POST',
+      body: JSON.stringify(record),
+    });
+  },
+
+  async updateCase(id: string, record: Partial<CaseRecord> & { officerId?: string }): Promise<CaseRecord> {
+    return apiRequest<CaseRecord>(`/cases/${encodeURIComponent(id)}`, {
+      method: 'PUT',
+      body: JSON.stringify(record),
+    });
+  },
+
+  async deleteCase(id: string): Promise<{ success: boolean; deletedRecord: CaseRecord }> {
+    return apiRequest<{ success: boolean; deletedRecord: CaseRecord }>(`/cases/${encodeURIComponent(id)}`, {
+      method: 'DELETE',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+  },
+
+  async getOfficers(): Promise<any[]> {
+    return apiRequest<any[]>('/auth/officers');
+  },
 };
+

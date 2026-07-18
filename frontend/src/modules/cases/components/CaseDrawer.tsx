@@ -13,9 +13,19 @@ interface CaseDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   record: CaseRecord | null;
+  onEdit?: (record: CaseRecord) => void;
+  onDelete?: (record: CaseRecord) => void;
+  onAssignOfficer?: (record: CaseRecord) => void;
 }
 
-export function CaseDrawer({ isOpen, onClose, record }: CaseDrawerProps) {
+export function CaseDrawer({
+  isOpen,
+  onClose,
+  record,
+  onEdit,
+  onDelete,
+  onAssignOfficer,
+}: CaseDrawerProps) {
   const navigate = useNavigate();
   const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
 
@@ -214,7 +224,9 @@ export function CaseDrawer({ isOpen, onClose, record }: CaseDrawerProps) {
           {/* 5. Quick Actions */}
           <QuickActionsPanel
             record={record}
-            onAssignOfficer={() => alert(`Reassigning officer for ${record.firNumber}`)}
+            onAssignOfficer={onAssignOfficer ? () => onAssignOfficer(record) : undefined}
+            onEdit={onEdit ? () => onEdit(record) : undefined}
+            onDelete={onDelete ? () => onDelete(record) : undefined}
           />
         </div>
       </motion.div>
