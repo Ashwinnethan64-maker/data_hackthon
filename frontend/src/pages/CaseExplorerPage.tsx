@@ -1,5 +1,4 @@
 import { AnimatePresence } from 'framer-motion';
-import { Badge } from '../components/Badge';
 import { useCaseExplorer } from '../modules/cases/hooks/useCaseExplorer';
 import { CaseToolbar } from '../modules/cases/components/CaseToolbar';
 import { CaseFilters } from '../modules/cases/components/CaseFilters';
@@ -68,9 +67,9 @@ export function CaseExplorerPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       {/* Top Header */}
-      <section className="space-y-2">
+      <section className="space-y-2 mb-6">
         <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan/80">Intelligence Records</p>
         <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
           <div>
@@ -79,9 +78,6 @@ export function CaseExplorerPage() {
               Search, filter, and drill down into Karnataka Police FIR records. Open files to see timeline maps, suspects, and legal acts.
             </p>
           </div>
-          <Badge variant="info" className="w-fit">
-            System Database Live
-          </Badge>
         </div>
       </section>
 

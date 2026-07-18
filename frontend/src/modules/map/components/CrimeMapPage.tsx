@@ -22,6 +22,7 @@ export function CrimeMapPage() {
     analysisError,
     analyzeCurrentArea,
     clearAnalysis,
+    initialCenter,
   } = useCrimeMap();
 
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -78,6 +79,8 @@ export function CrimeMapPage() {
             showHeatmap={showHeatmap}
             mapType={mapType}
             onSelectIncident={setSelectedIncident}
+            selectedIncident={selectedIncident}
+            initialCenter={initialCenter}
           />
 
           {/* Stats overlay */}

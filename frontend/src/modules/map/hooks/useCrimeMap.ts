@@ -1,5 +1,6 @@
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import type { MapFilters, MapIncident, AreaAnalysis } from '../types';
 import { DEFAULT_FILTERS } from '../types';
 import { getFilteredIncidents, generateAreaAnalysis } from '../services/mapService';
@@ -7,6 +8,9 @@ import { getFilteredIncidents, generateAreaAnalysis } from '../services/mapServi
 export function useCrimeMap() {
   const [filters, setFilters] = useState<MapFilters>(DEFAULT_FILTERS);
   const [selectedIncident, setSelectedIncident] = useState<MapIncident | null>(null);
+  
+  const location = useLocation();
+  const state = location.state as { focusIncidentId?: string; center?: [number, number] } | null;
   
   // Layer toggles
   const [showHeatmap, setShowHeatmap] = useState(false);
@@ -25,6 +29,16 @@ export function useCrimeMap() {
     placeholderData: (previousData) => previousData, // keep old data while fetching new ones
     refetchInterval: 30000, // Poll every 30s for live updates
   });
+
+  // Automatically select incoming target incident if loaded
+  useEffect(() => {
+    if (state?.focusIncidentId && incidents.length > 0 && !selectedIncident) {
+      const matched = incidents.find(inc => String(inc.id) === String(state.focusIncidentId));
+      if (matched) {
+        setSelectedIncident(matched);
+      }
+    }
+  }, [state, incidents, selectedIncident]);
 
   const updateFilters = useCallback((newFilters: Partial<MapFilters>) => {
     setFilters((prev) => ({ ...prev, ...newFilters }));
@@ -63,5 +77,6 @@ export function useCrimeMap() {
     analysisError,
     analyzeCurrentArea,
     clearAnalysis: () => setAreaAnalysis(null),
+    initialCenter: state?.center,
   };
 }

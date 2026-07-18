@@ -1,16 +1,377 @@
-import { useParams } from 'react-router-dom';
-import { PlaceholderPage } from '../components/PlaceholderPage';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { motion } from 'framer-motion';
+import { ArrowLeft, Clock, MapPin, ShieldAlert, AlertTriangle, Sparkles } from 'lucide-react';
+import { Badge } from '../components/Badge';
+import { Card } from '../components/Card';
+import { Button } from '../components/Button';
+import { caseService } from '../modules/cases/services/caseService';
+import { CaseStatusBadge } from '../modules/cases/components/CaseStatusBadge';
+import { PriorityBadge } from '../modules/cases/components/PriorityBadge';
+import { VictimCard } from '../modules/cases/components/VictimCard';
+import { AccusedCard } from '../modules/cases/components/AccusedCard';
+import { OfficerCard } from '../modules/cases/components/OfficerCard';
+import { EvidenceCard } from '../modules/cases/components/EvidenceCard';
+import { QuickActionsPanel } from '../modules/cases/components/QuickActionsPanel';
+
+import { MapContainer, TileLayer, Marker, Popup } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+const CRIME_MARKER_CONFIG: Record<string, { color: string; glow: string; symbol: string }> = {
+  'Murder':             { color: '#dc2626', glow: 'rgba(220,38,38,0.6)',   symbol: '💀' },
+  'Robbery':            { color: '#ea580c', glow: 'rgba(234,88,12,0.6)',   symbol: '🔫' },
+  'Burglary':           { color: '#d97706', glow: 'rgba(217,119,6,0.6)',   symbol: '🏚️' },
+  'Cybercrime':         { color: '#7c3aed', glow: 'rgba(124,58,237,0.6)',  symbol: '💻' },
+  'Cyber Crime':        { color: '#7c3aed', glow: 'rgba(124,58,237,0.6)',  symbol: '💻' },
+  'Drug Trafficking':   { color: '#0891b2', glow: 'rgba(8,145,178,0.6)',   symbol: '💊' },
+  'Drug Crime':         { color: '#0891b2', glow: 'rgba(8,145,178,0.6)',   symbol: '💊' },
+  'Kidnapping':         { color: '#be185d', glow: 'rgba(190,24,93,0.6)',   symbol: '⛓️' },
+  'Fraud':              { color: '#1d4ed8', glow: 'rgba(29,78,216,0.6)',   symbol: '📄' },
+  'Violence':           { color: '#b91c1c', glow: 'rgba(185,28,28,0.6)',   symbol: '⚠️' },
+  'Traffic Crime':      { color: '#15803d', glow: 'rgba(21,128,61,0.6)',   symbol: '🚗' },
+  'Theft':              { color: '#ca8a04', glow: 'rgba(202,138,4,0.6)',   symbol: '🎭' },
+  'Extortion':          { color: '#9333ea', glow: 'rgba(147,51,234,0.6)',  symbol: '💰' },
+  'Assault':            { color: '#ef4444', glow: 'rgba(239,68,68,0.6)',   symbol: '👊' },
+  'Rioting':            { color: '#e11d48', glow: 'rgba(225,29,72,0.6)',   symbol: '🔥' },
+};
+
+function createCrimeIcon(category: string): L.DivIcon {
+  const config = CRIME_MARKER_CONFIG[category] || CRIME_MARKER_CONFIG['Assault'];
+  const html = `
+    <div style="
+      position: relative;
+      width: 36px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    ">
+      <div style="
+        position: absolute;
+        inset: 0;
+        border-radius: 50%;
+        background: ${config.glow};
+        animation: pulse 2.5s ease-in-out infinite;
+      "></div>
+      <div style="
+        position: relative;
+        z-index: 1;
+        width: 28px;
+        height: 28px;
+        border-radius: 50%;
+        background: ${config.color};
+        border: 2px solid rgba(255,255,255,0.3);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 14px;
+        box-shadow: 0 4px 12px ${config.glow}, 0 0 0 1px ${config.color};
+      ">
+        ${config.symbol}
+      </div>
+    </div>
+  `;
+
+  return L.divIcon({
+    html,
+    className: 'crime-marker',
+    iconSize: [36, 36],
+    iconAnchor: [18, 18],
+    popupAnchor: [0, -20],
+  });
+}
 
 export function CaseDetailsPage() {
-  const { id } = useParams();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+
+  const { data: record, isLoading, isError } = useQuery({
+    queryKey: ['case', id],
+    queryFn: async () => {
+      if (!id) throw new Error('No case ID provided');
+      const data = await caseService.getCaseByFir(id);
+      if (!data) throw new Error('Case not found');
+      return data;
+    },
+    enabled: !!id,
+  });
+
+  const handleAskAI = () => {
+    if (!record) return;
+    navigate('/ai', {
+      state: {
+        query: `Analyze case ${record.firNumber} details, suspect involvement, acts, and evidence status.`,
+      },
+    });
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center gap-3 bg-slate-950">
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-700 border-t-cyan" />
+        <p className="text-sm text-slate-400">Retrieving case record from Datastore...</p>
+      </div>
+    );
+  }
+
+  if (isError || !record) {
+    return (
+      <div className="flex h-screen flex-col items-center justify-center text-center bg-slate-950 p-6">
+        <AlertTriangle className="h-12 w-12 text-red-500 mb-3" />
+        <h2 className="text-xl font-bold text-white">Case Not Found</h2>
+        <p className="mt-2 text-sm text-slate-400 max-w-md">
+          The case file with reference ID "{id}" could not be retrieved from the intelligence datastore. It may have been archived or deleted.
+        </p>
+        <Button onClick={() => navigate('/cases')} className="mt-4">
+          Return to Case Explorer
+        </Button>
+      </div>
+    );
+  }
+
+  const lat = record.latitude || 15.3173;
+  const lng = record.longitude || 75.7139;
+  const center: [number, number] = [lat, lng];
 
   return (
-    <PlaceholderPage
-      eyebrow="Case Details"
-      title={`Case Summary ${id ? `· ${id}` : ''}`}
-      description="This view combines the case timeline, involved entities, acts, evidence, AI summary, and similar cases into one investigation workspace."
-      primaryActionLabel="Review timeline, victims, accused, and evidence"
-      secondaryActionLabel="Ask AI to summarize this FIR or explain connections"
-    />
+    <div className="space-y-6">
+      {/* Back navigation & primary action bar */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <button
+          onClick={() => navigate('/cases')}
+          className="flex items-center gap-2 text-sm font-semibold text-slate-400 hover:text-white transition w-fit"
+        >
+          <ArrowLeft className="h-4 w-4" />
+          <span>Back to Case Explorer</span>
+        </button>
+
+        <Button onClick={handleAskAI} className="flex items-center gap-2 text-xs bg-gradient-to-r from-cyan to-indigo-600 hover:from-cyan/95 hover:to-indigo-500 text-white font-semibold py-2 px-4 shadow-lg shadow-cyan/15 rounded-xl border-none">
+          <Sparkles className="h-4 w-4" />
+          <span>Ask AI Investigator</span>
+        </Button>
+      </div>
+
+      {/* Header Profile Section */}
+      <section className="space-y-2">
+        <p className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan/80">Intelligence Workspace</p>
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div>
+            <h1 className="text-3xl font-mono font-bold text-white tracking-tight">{record.firNumber}</h1>
+            <p className="mt-1 max-w-3xl text-sm leading-6 text-slate-400">
+              Registered crime record case file. Review timeline records, suspect demographics, geospatial indicators, and evidence exhibits.
+            </p>
+          </div>
+          <div className="flex items-center gap-3 shrink-0">
+            <CaseStatusBadge status={record.status} />
+            <PriorityBadge priority={record.priority} />
+          </div>
+        </div>
+      </section>
+
+      {/* Grid Layout Dashboard */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 items-start">
+        {/* Left main block (Span 2) */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* AI Insights Insight Card */}
+          <motion.div
+            initial={{ opacity: 0, y: 15 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="rounded-2xl border border-cyan/30 bg-cyan/5 p-5 space-y-3 shadow-inner"
+          >
+            <div className="flex items-center gap-2 text-cyan font-bold text-sm">
+              <ShieldAlert className="h-5 w-5" />
+              <span>AI Investigator Crime Insight</span>
+            </div>
+            <p className="text-sm text-slate-300 leading-relaxed">
+              This case highlights registered <strong>{record.crimeCategory.toLowerCase()}</strong> activity occurring within the jurisdiction of {record.policeStation}. Cross-checking repeat offender datastores shows <strong>{record.accused.filter(a => a.isRepeatOffender).length} accused suspects</strong> flagged with active backlogs. Immediate patrol recommendation and link network analyses are advised.
+            </p>
+          </motion.div>
+
+          {/* General Incident Info */}
+          <Card className="space-y-4">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider">General Information</h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-sm">
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">Crime Category</p>
+                  <p className="text-white font-medium text-base mt-0.5">{record.crimeCategory}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">Incident Date</p>
+                  <p className="text-white font-medium text-base mt-0.5">
+                    {new Date(record.incidentDate).toLocaleString('en-IN', {
+                      dateStyle: 'medium',
+                      timeStyle: 'short',
+                    })}
+                  </p>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">District / Jurisdiction</p>
+                  <p className="text-white font-medium text-base mt-0.5">{record.district} District</p>
+                </div>
+                <div>
+                  <p className="text-xs text-slate-500 font-semibold uppercase">Police Station</p>
+                  <p className="text-white font-medium text-base mt-0.5">{record.policeStation}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="border-t border-white/5 pt-4">
+              <p className="text-xs text-slate-500 font-semibold uppercase">Incident Description</p>
+              <p className="text-sm text-slate-300 leading-relaxed mt-2 p-3 rounded-xl bg-slate-950/40 border border-white/5 font-sans">
+                {record.description}
+              </p>
+            </div>
+          </Card>
+
+          {/* Legal Acts */}
+          <Card className="space-y-3">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Applicable Legal IPC / BNS Sections</h4>
+            <div className="flex flex-wrap gap-2">
+              {record.applicableActs.map((act) => (
+                <Badge key={act} variant="info" className="text-xs font-mono py-1 px-3 bg-cyan/15 text-cyan border border-cyan/30">
+                  {act}
+                </Badge>
+              ))}
+            </div>
+          </Card>
+
+          {/* Demographics (Victims & Suspects) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Victims */}
+            <Card className="space-y-3">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center justify-between">
+                <span>Victims</span>
+                <Badge variant="neutral" className="text-xs py-0.5 px-2">{record.victims.length}</Badge>
+              </h4>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {record.victims.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic p-3 text-center">No victim profiles registered</p>
+                ) : (
+                  record.victims.map((vic, index) => (
+                    <VictimCard key={index} victim={vic} />
+                  ))
+                )}
+              </div>
+            </Card>
+
+            {/* Accused */}
+            <Card className="space-y-3">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center justify-between">
+                <span>Accused / Suspects</span>
+                <Badge variant="neutral" className="text-xs py-0.5 px-2">{record.accused.length}</Badge>
+              </h4>
+              <div className="space-y-2 max-h-[300px] overflow-y-auto pr-1">
+                {record.accused.length === 0 ? (
+                  <p className="text-xs text-slate-500 italic p-3 text-center">No suspects identified yet</p>
+                ) : (
+                  record.accused.map((acc, index) => (
+                    <AccusedCard key={index} accused={acc} />
+                  ))
+                )}
+              </div>
+            </Card>
+          </div>
+
+          {/* Evidence Logs */}
+          <Card className="space-y-3">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center justify-between">
+              <span>Evidence Exhibits</span>
+              <Badge variant="neutral" className="text-xs py-0.5 px-2">{record.evidence.length}</Badge>
+            </h4>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[350px] overflow-y-auto pr-1">
+              {record.evidence.length === 0 ? (
+                <p className="text-xs text-slate-500 italic p-3 col-span-2 text-center">No evidence exhibits logged</p>
+              ) : (
+                record.evidence.map((ev, index) => (
+                  <EvidenceCard key={index} evidence={ev} />
+                ))
+              )}
+            </div>
+          </Card>
+        </div>
+
+        {/* Right sidebar block (Span 1) */}
+        <div className="space-y-6">
+          {/* Quick Actions Panel */}
+          <QuickActionsPanel record={record} />
+
+          {/* Assigned Officer */}
+          <Card className="space-y-3">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Investigating Officer</h4>
+            <OfficerCard officer={record.officer} />
+          </Card>
+
+          {/* GPS Location Mini Map */}
+          <Card className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Geospatial Marker</h4>
+              <span className="text-xs font-mono text-cyan flex items-center gap-1">
+                <MapPin className="h-3 w-3" />
+                {lat.toFixed(4)}°, {lng.toFixed(4)}°
+              </span>
+            </div>
+
+            <div className="h-60 w-full rounded-xl overflow-hidden border border-white/10 relative z-0">
+              <MapContainer
+                center={center}
+                zoom={13}
+                zoomControl={true}
+                scrollWheelZoom={false}
+                style={{ height: '100%', width: '100%', background: '#060f1e' }}
+              >
+                <TileLayer
+                  url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png"
+                  attribution='&copy; <a href="https://carto.com/attributions">CARTO</a>'
+                />
+                <Marker position={center} icon={createCrimeIcon(record.crimeCategory)}>
+                  <Popup className="custom-leaflet-popup">
+                    <div className="text-slate-900 font-sans p-1">
+                      <p className="font-mono text-xs font-bold text-cyan-600">{record.firNumber}</p>
+                      <p className="text-xs font-semibold text-slate-800 mt-0.5">{record.crimeCategory}</p>
+                      <p className="text-[10px] text-slate-500 mt-0.5">{record.policeStation}</p>
+                    </div>
+                  </Popup>
+                </Marker>
+              </MapContainer>
+            </div>
+          </Card>
+
+          {/* Chronological Timeline */}
+          <Card className="space-y-4">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center gap-2">
+              <Clock className="h-4 w-4 text-cyan" />
+              <span>Investigation Timeline</span>
+            </h4>
+            <div className="relative pl-6 space-y-5 border-l border-white/10 ml-2">
+              {record.timeline.map((step, index) => (
+                <div key={index} className="relative">
+                  <div
+                    className={`absolute -left-[30px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-slate-950 ${
+                      step.status === 'completed'
+                        ? 'bg-success'
+                        : step.status === 'current'
+                          ? 'bg-cyan animate-pulse'
+                          : 'bg-slate-700'
+                    }`}
+                  />
+                  <div>
+                    <p className="text-sm font-semibold text-white">{step.title}</p>
+                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1 font-mono">
+                      <Clock className="h-3 w-3" />
+                      {step.time}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </Card>
+        </div>
+      </div>
+    </div>
   );
 }

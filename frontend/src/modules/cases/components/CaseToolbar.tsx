@@ -42,13 +42,13 @@ export function CaseToolbar({
   };
 
   return (
-    <div className="flex flex-wrap items-center justify-between gap-4 rounded-2xl border border-white/10 bg-slate-900/60 p-4">
+    <div className="grid grid-cols-1 gap-3 rounded-2xl border border-white/10 bg-slate-900/60 p-3 md:grid-cols-12 md:items-center">
       {/* Search Input */}
-      <div className="relative flex-1 min-w-[280px]">
+      <div className="relative md:col-span-5 lg:col-span-6">
         <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <input
           type="text"
-          className="w-full rounded-2xl border border-white/10 bg-slate-950/60 py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan/60"
+          className="w-full rounded-xl border border-white/10 bg-slate-950/60 py-2.5 pl-11 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-cyan/60"
           placeholder="Search FIR number, officer, descriptions..."
           value={filters.searchQuery}
           onChange={(e) => handleSearchChange(e.target.value)}
@@ -56,12 +56,12 @@ export function CaseToolbar({
       </div>
 
       {/* Toolbar actions */}
-      <div className="flex items-center gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:flex sm:items-center sm:gap-2 md:col-span-7 lg:col-span-6 md:justify-end">
         {selectedCount > 0 && (
-          <div className="flex items-center gap-2 border-r border-white/10 pr-3">
+          <div className="col-span-2 flex items-center justify-between sm:justify-start gap-2 border-b sm:border-b-0 sm:border-r border-white/10 pb-2 sm:pb-0 sm:pr-3">
             <span className="text-xs text-cyan font-semibold">{selectedCount} Selected</span>
-            <Button variant="secondary" onClick={onBulkClose} className="py-1 px-3 text-xs bg-cyan/15 text-cyan hover:bg-cyan/25 border-cyan/20">
-              <CheckSquare className="h-3 w-3" />
+            <Button variant="secondary" onClick={onBulkClose} className="py-1 px-3 text-xs bg-cyan/15 text-cyan hover:bg-cyan/25 border-cyan/20 rounded-xl">
+              <CheckSquare className="h-3.5 w-3.5" />
               Close Cases
             </Button>
           </div>
@@ -70,21 +70,21 @@ export function CaseToolbar({
         <Button
           variant="secondary"
           onClick={() => setIsFilterSidebarOpen(!isFilterSidebarOpen)}
-          className={isFilterSidebarOpen ? 'border-cyan/40 bg-cyan/10 text-white' : ''}
+          className={`w-full sm:w-auto py-2 px-3 text-xs rounded-xl ${isFilterSidebarOpen ? 'border-cyan/40 bg-cyan/10 text-white' : ''}`}
         >
-          <Filter className="h-4 w-4" />
+          <Filter className="h-3.5 w-3.5" />
           <span>Filters</span>
         </Button>
 
         {/* Column Visibility dropdown */}
-        <div className="relative">
-          <Button variant="secondary" onClick={() => setShowVisibilityDropdown(!showVisibilityDropdown)}>
-            <Eye className="h-4 w-4" />
+        <div className="relative w-full sm:w-auto">
+          <Button variant="secondary" onClick={() => setShowVisibilityDropdown(!showVisibilityDropdown)} className="w-full py-2 px-3 text-xs rounded-xl">
+            <Eye className="h-3.5 w-3.5" />
             <span>Columns</span>
           </Button>
 
           {showVisibilityDropdown && (
-            <div className="absolute right-0 mt-2 z-50 w-56 rounded-2xl border border-white/10 bg-slate-950 p-4 shadow-xl">
+            <div className="absolute right-0 mt-1.5 z-50 w-56 rounded-xl border border-white/10 bg-slate-950 p-4 shadow-xl">
               <p className="text-xs font-semibold uppercase tracking-wider text-slate-400 mb-3">Visible Columns</p>
               <div className="space-y-2 max-h-60 overflow-y-auto">
                 {Object.keys(visibleColumns).map((colKey) => (
@@ -103,13 +103,14 @@ export function CaseToolbar({
           )}
         </div>
 
-        <Button variant="secondary" onClick={onExportCsv}>
-          <Download className="h-4 w-4" />
+        <Button variant="secondary" onClick={onExportCsv} className="w-full sm:w-auto py-2 px-3 text-xs rounded-xl">
+          <Download className="h-3.5 w-3.5" />
           <span>Export CSV</span>
         </Button>
 
-        <Button variant="secondary" onClick={onRefresh}>
-          <RefreshCw className="h-4 w-4" />
+        <Button variant="secondary" onClick={onRefresh} className="w-full sm:w-auto py-2 px-3 text-xs rounded-xl flex justify-center">
+          <RefreshCw className="h-3.5 w-3.5" />
+          <span>Refresh</span>
         </Button>
       </div>
     </div>

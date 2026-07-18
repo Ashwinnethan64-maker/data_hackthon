@@ -108,7 +108,10 @@ async function getAllRows(req, tableName) {
       const query = `SELECT * FROM ${tableName}`;
       const queryResult = await zcql.executeZCQLQuery(query);
       logDebug(`ZCQL query succeeded for table '${tableName}'. Row count: ${queryResult.length}`);
-      return queryResult.map(row => normalizeRow(row[tableName]));
+      if (queryResult && queryResult.length > 0) {
+        return queryResult.map(row => normalizeRow(row[tableName]));
+      }
+      logDebug(`ZCQL query returned 0 rows for table '${tableName}'. Falling back to local JSON.`);
     } catch (error) {
       logDebug(`[WARN] ZCQL query failed for table '${tableName}': ${error.message}`);
     }

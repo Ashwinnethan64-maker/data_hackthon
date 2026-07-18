@@ -5,27 +5,38 @@ import type { CaseRecord } from '../types';
 
 interface QuickActionsPanelProps {
   record: CaseRecord;
-  onLocateOnMap?: () => void;
-  onGeneratePdf?: () => void;
   onAssignOfficer?: () => void;
 }
 
 export function QuickActionsPanel({
   record,
-  onLocateOnMap,
-  onGeneratePdf,
   onAssignOfficer,
 }: QuickActionsPanelProps) {
   const navigate = useNavigate();
 
   const handleOpenAi = () => {
     // Navigate to AI Investigator workspace, pre-populating query context
-    navigate('/ai', { state: { query: `Summarize FIR ${record.firNumber}` } });
+    navigate('/ai', { state: { query: `Analyze case ${record.firNumber} details, suspect involvement, acts, and evidence status.` } });
   };
 
   const handleOpenNetwork = () => {
-    // Navigate to Criminal Network workspace
-    navigate('/network', { state: { caseId: record.id } });
+    // Navigate to Criminal Network workspace, pre-populating target case node
+    navigate('/network', { state: { caseId: record.id, firNumber: record.firNumber } });
+  };
+
+  const handleLocateOnMap = () => {
+    // Navigate to GIS map and focus on the coordinates of this case
+    navigate('/map', { state: { focusIncidentId: record.id, center: [record.latitude, record.longitude] } });
+  };
+
+  const handleExportPdf = () => {
+    // Open the backend export-pdf route to download the official FIR PDF
+    window.open(`/server/ai-cios/cases/${record.id || (record as any).ROWID}/export-pdf`, '_blank');
+  };
+
+  const handleGenerateSummary = () => {
+    // Navigate to AI Investigator workspace, requesting a formatted executive summary of this case
+    navigate('/ai', { state: { query: `Generate an executive intelligence summary report of FIR ${record.firNumber}. Include incident details, victim/accused summaries, acts, and timeline.` } });
   };
 
   return (
@@ -35,7 +46,7 @@ export function QuickActionsPanel({
         <p className="text-xs text-slate-400 mt-0.5">Operate on case intelligence</p>
       </div>
 
-      <div className="grid grid-cols-2 gap-2 text-xs">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
         <button
           onClick={handleOpenAi}
           className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
@@ -53,7 +64,7 @@ export function QuickActionsPanel({
         </button>
 
         <button
-          onClick={onLocateOnMap}
+          onClick={handleLocateOnMap}
           className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
         >
           <MapPin className="h-4 w-4 text-cyan" />
@@ -61,7 +72,7 @@ export function QuickActionsPanel({
         </button>
 
         <button
-          onClick={onGeneratePdf}
+          onClick={handleExportPdf}
           className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
         >
           <Download className="h-4 w-4 text-cyan" />
@@ -77,7 +88,7 @@ export function QuickActionsPanel({
         </button>
 
         <button
-          onClick={() => alert(`Generating Summary for ${record.firNumber}...`)}
+          onClick={handleGenerateSummary}
           className="flex items-center gap-2 rounded-xl border border-white/5 bg-slate-900/60 p-2.5 text-left text-slate-300 transition hover:border-cyan/40 hover:bg-cyan/10 hover:text-white"
         >
           <FileText className="h-4 w-4 text-cyan" />

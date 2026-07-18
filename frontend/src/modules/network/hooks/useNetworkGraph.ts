@@ -1,6 +1,7 @@
 import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useNodesState, useEdgesState, useReactFlow } from 'reactflow';
 import { useQuery } from '@tanstack/react-query';
+import { useLocation } from 'react-router-dom';
 import type { NetworkNode, NetworkEdge, NetworkFilterOptions, NetworkEdgeData, NetworkNodeData } from '../types';
 import { DEFAULT_FILTERS } from '../types';
 import {
@@ -24,6 +25,9 @@ export function useNetworkGraph() {
   const [highlightedNodeIds, setHighlightedNodeIds] = useState<Set<string> | null>(null);
   const [isFullGraph, setIsFullGraph] = useState(false);
 
+  const location = useLocation();
+  const state = location.state as { caseId?: string; firNumber?: string } | null;
+
   // ── Query for Graph ──────────────────────────────────────────────────────────
   const { data: graphData, isSuccess } = useQuery({
     queryKey: ['networkGraph', filters, isFullGraph],
@@ -35,9 +39,13 @@ export function useNetworkGraph() {
     if (isSuccess && graphData) {
       setNodes(graphData.nodes);
       setEdges(graphData.edges);
-      setTimeout(() => fitView({ padding: 0.15, duration: 800 }), 100);
+      
+      // Only fit view if there's no custom focal state in routing
+      if (!state?.firNumber) {
+        setTimeout(() => fitView({ padding: 0.15, duration: 800 }), 100);
+      }
     }
-  }, [graphData, isSuccess, setNodes, setEdges, fitView]);
+  }, [graphData, isSuccess, setNodes, setEdges, fitView, state]);
 
   // ── Search Query ─────────────────────────────────────────────────────────────
   const { data: searchResults = [] } = useQuery({
@@ -163,6 +171,22 @@ export function useNetworkGraph() {
     setIsFullGraph(true);
     setFilters(DEFAULT_FILTERS);
   }, []);
+
+  // Autofocus effect once nodes are loaded
+  useEffect(() => {
+    const targetFir = state?.firNumber;
+    if (targetFir && nodes.length > 0) {
+      const targetNode = nodes.find(n => 
+        n.id === `fir-${targetFir}` || 
+        (n.data && (n.data as any).label === targetFir)
+      );
+      if (targetNode && selectedNodeId !== targetNode.id) {
+        setTimeout(() => {
+          focusNode(targetNode.id);
+        }, 300);
+      }
+    }
+  }, [state, nodes, focusNode, selectedNodeId]);
 
   return {
     nodes: processedNodes,

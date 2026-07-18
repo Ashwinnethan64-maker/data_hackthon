@@ -1,13 +1,11 @@
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { X, Clock, MapPin, ShieldAlert, Award, FileSearch, HelpCircle } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Clock, MapPin, ExternalLink } from 'lucide-react';
 import { Badge } from '../../../components/Badge';
 import { Card } from '../../../components/Card';
 import { CaseStatusBadge } from './CaseStatusBadge';
 import { PriorityBadge } from './PriorityBadge';
-import { VictimCard } from './VictimCard';
-import { AccusedCard } from './AccusedCard';
-import { OfficerCard } from './OfficerCard';
-import { EvidenceCard } from './EvidenceCard';
 import { QuickActionsPanel } from './QuickActionsPanel';
 import type { CaseRecord } from '../types';
 
@@ -15,19 +13,43 @@ interface CaseDrawerProps {
   isOpen: boolean;
   onClose: () => void;
   record: CaseRecord | null;
-  nearbyCases?: CaseRecord[];
 }
 
-export function CaseDrawer({ isOpen, onClose, record, nearbyCases = [] }: CaseDrawerProps) {
+export function CaseDrawer({ isOpen, onClose, record }: CaseDrawerProps) {
+  const navigate = useNavigate();
+  const [isMobile, setIsMobile] = useState(() => typeof window !== 'undefined' ? window.innerWidth < 1024 : false);
+
+  useEffect(() => {
+    const checkMobile = () => {
+      setIsMobile(window.innerWidth < 1024);
+    };
+    window.addEventListener('resize', checkMobile);
+    return () => window.removeEventListener('resize', checkMobile);
+  }, []);
+
   if (!isOpen || !record) return null;
 
-  // Filter nearby related cases (same district or station, excluding current) if not pre-filtered
-  const relatedCases = nearbyCases
-    .filter((c: CaseRecord) => c.id !== record.id && (c.district === record.district || c.policeStation === record.policeStation))
-    .slice(0, 3);
+  const handleOpenWorkspace = () => {
+    onClose();
+    navigate(`/case/${record.firNumber}`);
+  };
+
+  const motionVariants = isMobile
+    ? {
+        initial: { opacity: 0, scale: 0.95, y: 10, x: 0 },
+        animate: { opacity: 1, scale: 1, y: 0, x: 0 },
+        exit: { opacity: 0, scale: 0.95, y: 10, x: 0 },
+        transition: { duration: 0.2, ease: 'easeOut' },
+      }
+    : {
+        initial: { x: '100%', y: 0, opacity: 1, scale: 1 },
+        animate: { x: 0, y: 0, opacity: 1, scale: 1 },
+        exit: { x: '100%', y: 0, opacity: 1, scale: 1 },
+        transition: { type: 'spring', damping: 25, stiffness: 200 },
+      };
 
   return (
-    <div className="fixed inset-0 z-50 flex justify-end">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-0 lg:justify-end">
       {/* Overlay Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}
@@ -39,212 +61,161 @@ export function CaseDrawer({ isOpen, onClose, record, nearbyCases = [] }: CaseDr
 
       {/* Drawer Body */}
       <motion.div
-        initial={{ x: '100%' }}
-        animate={{ x: 0 }}
-        exit={{ x: '100%' }}
-        transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-        className="relative z-10 w-full max-w-2xl border-l border-white/10 bg-slate-950 p-6 shadow-2xl h-screen overflow-y-auto"
+        variants={motionVariants}
+        initial="initial"
+        animate="animate"
+        exit="exit"
+        className="relative z-10 w-full max-w-lg md:max-w-2xl max-h-[85vh] lg:max-h-none lg:h-screen rounded-2xl lg:rounded-none border lg:border-l border-white/10 lg:border-y-0 lg:border-r-0 bg-slate-950 p-6 shadow-2xl overflow-y-auto"
       >
+        {/* Absolute Close Button */}
+        <button
+          onClick={onClose}
+          className="absolute right-6 top-6 sm:top-8 rounded-xl border border-white/10 bg-white/5 p-2.5 text-slate-400 hover:bg-cyan/10 hover:text-cyan hover:border-cyan/30 transition-all duration-200 z-20"
+        >
+          <X className="h-5 w-5" />
+        </button>
+
         {/* Drawer Header */}
-        <div className="flex items-center justify-between border-b border-white/10 pb-4 mb-6">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-white/10 pb-4 mb-6 pr-8 sm:pr-12">
           <div>
-            <div className="flex items-center gap-2">
-              <span className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">Investigation File</span>
-              <PriorityBadge priority={record.priority} />
-            </div>
-            <h2 className="text-2xl font-bold text-white mt-1.5 font-mono">{record.firNumber}</h2>
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-cyan">Investigation File</span>
+            <h2 className="text-xl sm:text-2xl font-bold text-white mt-1.5 font-mono">{record.firNumber}</h2>
           </div>
-          <div className="flex items-center gap-3">
-            <CaseStatusBadge status={record.status} />
+          <div className="flex items-center gap-2 w-full sm:w-auto">
             <button
-              onClick={onClose}
-              className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-400 hover:bg-white/10 hover:text-white transition"
+              onClick={handleOpenWorkspace}
+              className="flex-1 sm:flex-none flex items-center justify-center gap-2 rounded-xl bg-cyan px-4 py-2.5 text-xs font-bold text-slate-950 hover:bg-cyan/90 transition shadow-lg shadow-cyan/15"
             >
-              <X className="h-5 w-5" />
+              <span>Open Case Workspace</span>
+              <ExternalLink className="h-4 w-4" />
             </button>
           </div>
         </div>
 
         {/* Content sections */}
         <div className="space-y-6">
-          {/* Quick AI Summary */}
-          <div className="rounded-2xl border border-cyan/30 bg-cyan/5 p-4 space-y-2.5">
-            <div className="flex items-center gap-2 text-cyan font-bold text-sm">
-              <ShieldAlert className="h-4.5 w-4.5" />
-              <span>Quick AI Crime Insight</span>
+          {/* 1. Case Summary Card */}
+          <Card className="space-y-3 bg-slate-950/40 border border-white/5 p-4">
+            <div className="flex items-center justify-between">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Case Summary</h4>
+              <div className="flex items-center gap-2">
+                <CaseStatusBadge status={record.status} />
+                <PriorityBadge priority={record.priority} />
+              </div>
             </div>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              This case involves <strong>{record.crimeCategory.toLowerCase()}</strong> activity registered at {record.policeStation}. The confidence mapping of suspects is currently flagged as {record.priority.toLowerCase()} priority based on {record.accused.filter(a => a.isRepeatOffender).length} repeat offender matches in the local grid.
-            </p>
-          </div>
-
-          {/* Quick Actions */}
-          <QuickActionsPanel
-            record={record}
-            onLocateOnMap={() => alert(`Locating ${record.firNumber} at Lat: ${record.latitude}, Lng: ${record.longitude}`)}
-            onGeneratePdf={() => alert(`Downloading PDF report for ${record.firNumber}`)}
-            onAssignOfficer={() => alert(`Reassigning officer for ${record.firNumber}`)}
-          />
-
-          {/* General Information */}
-          <Card className="space-y-4">
-            <h4 className="text-sm font-semibold text-white">General Information</h4>
-            <div className="grid grid-cols-2 gap-4 text-sm">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs leading-relaxed">
               <div>
-                <p className="text-xs text-slate-500">Crime Category</p>
-                <p className="text-white font-medium mt-0.5">{record.crimeCategory}</p>
+                <span className="text-slate-500 font-semibold block">Incident Date</span>
+                <span className="text-white font-medium">
+                  {new Date(record.incidentDate).toLocaleString('en-IN', {
+                    dateStyle: 'medium',
+                    timeStyle: 'short',
+                  })}
+                </span>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Incident Date</p>
-                <p className="text-white font-medium mt-0.5">
-                  {new Date(record.incidentDate).toLocaleString('en-IN')}
-                </p>
+                <span className="text-slate-500 font-semibold block">Police Station</span>
+                <span className="text-white font-medium">{record.policeStation}</span>
               </div>
               <div>
-                <p className="text-xs text-slate-500">District / Jurisdiction</p>
-                <p className="text-white font-medium mt-0.5">{record.district} District</p>
+                <span className="text-slate-500 font-semibold block">Jurisdiction District</span>
+                <span className="text-white font-medium">{record.district} District</span>
               </div>
               <div>
-                <p className="text-xs text-slate-500">Police Station</p>
-                <p className="text-white font-medium mt-0.5">{record.policeStation}</p>
-              </div>
-              <div className="col-span-2">
-                <p className="text-xs text-slate-500">GPS Coordinates</p>
-                <p className="text-white font-mono mt-0.5 flex items-center gap-1.5">
+                <span className="text-slate-500 font-semibold block">GPS Coordinates</span>
+                <span className="text-white font-mono flex items-center gap-1 mt-0.5">
                   <MapPin className="h-3.5 w-3.5 text-cyan" />
-                  {record.latitude.toFixed(5)}, {record.longitude.toFixed(5)}
+                  {record.latitude.toFixed(4)}, {record.longitude.toFixed(4)}
+                </span>
+              </div>
+              <div className="col-span-2 border-t border-white/5 pt-3">
+                <span className="text-slate-500 font-semibold block">Case Brief</span>
+                <p className="text-slate-300 text-xs leading-relaxed mt-1 font-sans line-clamp-3 hover:line-clamp-none transition-all duration-300">
+                  {record.description}
                 </p>
               </div>
             </div>
-
-            <div className="border-t border-white/5 pt-4">
-              <p className="text-xs text-slate-500">Incident Description</p>
-              <p className="text-sm text-slate-300 leading-relaxed mt-1">{record.description}</p>
-            </div>
           </Card>
 
-          {/* Applicable Legal Acts */}
-          <Card className="space-y-3">
-            <h4 className="text-sm font-semibold text-white">Applicable IPC / BNS Sections</h4>
-            <div className="flex flex-wrap gap-2">
-              {record.applicableActs.map((act) => (
-                <Badge key={act} variant="info" className="text-xs font-mono py-1 px-3">
-                  {act}
-                </Badge>
-              ))}
-            </div>
-          </Card>
-
-          {/* Officer details */}
-          <div className="grid md:grid-cols-2 gap-4">
-            <Card className="space-y-3">
-              <h4 className="text-sm font-semibold text-white">Investigating Officer</h4>
-              <OfficerCard officer={record.officer} />
-            </Card>
-
-            <Card className="space-y-3">
-              <h4 className="text-sm font-semibold text-white">Crime Location Info</h4>
-              <div className="flex items-center gap-3 rounded-xl border border-white/5 bg-slate-950/40 p-3">
-                <div className="rounded-lg bg-info/15 p-2 text-info">
-                  <Award className="h-4 w-4" />
-                </div>
-                <div>
-                  <p className="text-sm font-semibold text-white">{record.policeStation}</p>
-                  <p className="text-xs text-slate-400 mt-0.5">Jurisdiction zone</p>
-                </div>
-              </div>
-            </Card>
-          </div>
-
-          {/* Demographics List (Victims & Accused) */}
-          <div className="grid md:grid-cols-2 gap-4">
+          {/* 2. Demographics Glimpse (Victims & Suspects) */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {/* Victims */}
-            <Card className="space-y-3">
-              <h4 className="text-sm font-semibold text-white">Victims ({record.victims.length})</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {record.victims.map((vic, index) => (
-                  <VictimCard key={index} victim={vic} />
-                ))}
+            <Card className="space-y-3 bg-slate-950/40 border border-white/5 p-4">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center justify-between">
+                <span>Victims</span>
+                <Badge variant="neutral" className="text-xs py-0.5 px-2">{record.victims.length}</Badge>
+              </h4>
+              <div className="space-y-2 text-xs">
+                {record.victims.length === 0 ? (
+                  <p className="text-slate-500 italic">No victim profiles registered</p>
+                ) : (
+                  record.victims.map((vic, index) => (
+                    <div key={index} className="flex justify-between text-slate-300 border-b border-white/5 pb-1">
+                      <span className="font-medium text-white">{vic.name}</span>
+                      <span className="text-slate-400">{vic.gender.charAt(0)} · {vic.age}y</span>
+                    </div>
+                  ))
+                )}
               </div>
             </Card>
 
-            {/* Accused */}
-            <Card className="space-y-3">
-              <h4 className="text-sm font-semibold text-white">Accused ({record.accused.length})</h4>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
+            {/* Suspects */}
+            <Card className="space-y-3 bg-slate-950/40 border border-white/5 p-4">
+              <h4 className="text-sm font-semibold text-white uppercase tracking-wider flex items-center justify-between">
+                <span>Suspects</span>
+                <Badge variant="neutral" className="text-xs py-0.5 px-2">{record.accused.length}</Badge>
+              </h4>
+              <div className="space-y-2 text-xs">
                 {record.accused.length === 0 ? (
-                  <p className="text-xs text-slate-500 italic p-3">No suspects identified yet</p>
+                  <p className="text-slate-500 italic">No suspects identified yet</p>
                 ) : (
                   record.accused.map((acc, index) => (
-                    <AccusedCard key={index} accused={acc} />
+                    <div key={index} className="flex items-center justify-between border-b border-white/5 pb-1">
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <span className="font-medium text-white truncate">{acc.name}</span>
+                        {acc.isRepeatOffender && (
+                          <Badge variant="danger" className="text-[9px] py-0 px-1 font-bold uppercase shrink-0">
+                            Repeat
+                          </Badge>
+                        )}
+                      </div>
+                      <span className="text-slate-400 shrink-0">{acc.gender.charAt(0)} · {acc.age}y</span>
+                    </div>
                   ))
                 )}
               </div>
             </Card>
           </div>
 
-          {/* Evidence Summary */}
-          <Card className="space-y-3">
-            <div className="flex items-center justify-between">
-              <h4 className="text-sm font-semibold text-white">Evidence Exhibits</h4>
-              <Badge variant="neutral">Traceable logs</Badge>
-            </div>
-            <div className="space-y-2">
-              {record.evidence.map((ev, index) => (
-                <EvidenceCard key={index} evidence={ev} />
-              ))}
-            </div>
-          </Card>
-
-          {/* Case Timeline */}
-          <Card className="space-y-4">
-            <h4 className="text-sm font-semibold text-white">Investigation Milestones</h4>
-            <div className="relative pl-6 space-y-4 border-l border-white/10 ml-2">
-              {record.timeline.map((step, index) => (
-                <div key={index} className="relative">
-                  <div
-                    className={`absolute -left-[30px] top-1.5 h-3.5 w-3.5 rounded-full border-2 border-slate-950 ${
-                      step.status === 'completed'
-                        ? 'bg-success'
-                        : step.status === 'current'
-                          ? 'bg-cyan animate-pulse'
-                          : 'bg-slate-700'
-                    }`}
-                  />
-                  <div>
-                    <p className="text-sm font-semibold text-white">{step.title}</p>
-                    <p className="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                      <Clock className="h-3 w-3" />
-                      {step.time}
-                    </p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </Card>
-
-          {/* Nearby Related Cases */}
-          <Card className="space-y-3">
-            <h4 className="text-sm font-semibold text-white">Nearby Related Cases</h4>
-            <div className="space-y-2.5">
-              {relatedCases.length === 0 ? (
-                <p className="text-xs text-slate-500 italic">No other cases in this jurisdiction</p>
-              ) : (
-                relatedCases.map((nc: CaseRecord) => (
-                  <div
-                    key={nc.id}
-                    className="flex items-center justify-between gap-3 p-3 rounded-xl border border-white/5 bg-slate-950/40"
-                  >
+          {/* 3. Latest Milestone Status */}
+          <Card className="space-y-3 bg-slate-950/40 border border-white/5 p-4">
+            <h4 className="text-sm font-semibold text-white uppercase tracking-wider">Latest Investigation Status</h4>
+            {record.timeline && record.timeline.length > 0 ? (
+              (() => {
+                const latestStep = record.timeline.find(s => s.status === 'current') || record.timeline[record.timeline.length - 1];
+                return (
+                  <div className="flex items-start gap-3 rounded-xl bg-slate-900/60 p-3 border border-white/5">
+                    <div className={`mt-1.5 h-2.5 w-2.5 rounded-full shrink-0 ${latestStep.status === 'current' ? 'bg-cyan animate-pulse' : 'bg-success'}`} />
                     <div>
-                      <span className="text-xs font-mono text-cyan">{nc.firNumber}</span>
-                      <p className="text-sm font-semibold text-white mt-0.5">{nc.crimeCategory}</p>
+                      <p className="text-sm font-semibold text-white">{latestStep.title}</p>
+                      <p className="text-xs text-slate-500 mt-1 font-mono flex items-center gap-1">
+                        <Clock className="h-3 w-3" />
+                        {latestStep.time}
+                      </p>
                     </div>
-                    <Badge variant="neutral">{nc.status}</Badge>
                   </div>
-                ))
-              )}
-            </div>
+                );
+              })()
+            ) : (
+              <p className="text-xs text-slate-500 italic">No milestones registered</p>
+            )}
           </Card>
+
+          {/* 5. Quick Actions */}
+          <QuickActionsPanel
+            record={record}
+            onAssignOfficer={() => alert(`Reassigning officer for ${record.firNumber}`)}
+          />
         </div>
       </motion.div>
     </div>

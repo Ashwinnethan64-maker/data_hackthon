@@ -6,30 +6,27 @@
 
 ---
 
-## ⚡ Current Sprint Detail: Sprint 4 (AI & Authentication Integration)
+## ⚡ Current Sprint Detail: Sprint 5 (Case Explorer & Map Integration)
 
-**Goal:** Establish end-to-end secure user authentication with Zoho Catalyst + Google SSO, and connect the AI Investigator interface to the real LLM backend.
+**Goal:** Enable comprehensive case exploration, advanced metadata filtering, GIS mapping with Leaflet, and interactive AI spatial analyses.
 
-### 🔑 Authentication Integration Tasks
+### 🔎 Case Explorer & API Integration Tasks
 
-- [x] **SSO Client SDK Integration**: Integrate Google Identity Services SDK in `index.html`.
-- [x] **SSO Frontend Interface**: Design and place Google Sign-In button on the Login page with custom CSS matching the design system.
-- [x] **Backend Auth Route**: Build `/server/ai-cios/auth/google-login` Express controller to accept Google access tokens.
-- [x] **SSO User Verification**: Call Google userinfo endpoint on backend to retrieve user email, name, and profile data.
-- [x] **User Registration Flow**: Automatically check Catalyst Datastore (`officers` table) for existing email, and auto-register new Google users.
-- [x] **Catalyst JWT Sign-In**: Implement `catalyst.auth.signinWithJwt` on frontend using JWT tokens generated from backend.
-- [x] **Session Persistence**: Ensure token renewal and session tracking function properly on page reload/mount.
-- [x] **Role Mapping & Route Protection**: Retrieve role-based authorization parameters from database record and enforce routing rules.
+- [x] **Case Listing Layout & Data Table**: Construct responsive grid (`CaseTable.tsx`) with dynamic sorting of cases.
+- [x] **Server-side Pagination**: Wire up pagination controls in `CaseTable.tsx` to handle page changes and row counts.
+- [x] **Advanced Filtering Toolbar**: Refine `CaseFilters.tsx` UI & hooks to filter cases by acts, categories, districts, repeat offenders, and age/gender criteria.
+- [x] **Case Detailed Profile Drawer**: Fully integrate `CaseDrawer.tsx` to show case timeline, victim, accused, and evidence profiles.
+- [x] **Quick Action Operations**: Wired up "Ask AI" search routing, PDF exports, map focus redirection, and suspect network graphs links.
+- [x] **Catalyst casesRouter Endpoint Integration**: Integrate case service queries to map records dynamically to MongoDB-like JSON profiles in Express endpoints.
 
-### 🤖 AI Investigator Backend Integration Tasks
+### 🗺️ GIS & Crime Intelligence Map Integration Tasks
 
-- [x] **AI Chat Layout**: Construct `AIChatPage`, `ChatInput`, `ChatMessage`, and `ConversationSidebar` layouts.
-- [x] **Citation & Evidence Components**: Build `EvidencePanel` and `RelatedCases` components to support investigative transparency.
-- [x] **UI Indicators**: Support typing animation and prompt suggestions interfaces.
-- [x] **AI Service Route**: Implement backend Express router `/server/ai-cios/ai/chat` to process prompt queries.
-- [x] **LLM Integration**: Wire up Catalyst custom functions or backend services to the LLM endpoint (mock -> production).
-- [x] **Evidence & Citation Processing**: Write parser in backend to identify related case rows and construct evidence metadata.
-- [x] **Response Formatting**: Map backend LLM outputs to frontend `AiResponse` structure containing messages, confidence scores, and citations.
+- [x] **Leaflet Base Map Setup**: Initialize Leaflet maps in `CrimeMap.tsx` targeting regional Karnataka crime zones.
+- [x] **Clustered Incident Markers**: Render grouped pins with interactive icons representing severity levels using standard clustering.
+- [x] **Heatmap Layer Rendering**: Integrate custom `HeatmapLayer.tsx` to visualize crime density hotspots using coordinates.
+- [x] **Interactive Incident Popups**: Build popups detailing FIR categories, dates, assigned officers, and instant case details access.
+- [x] **Map Toolbar & Filter Syncing**: Hook up UI filters from `MapToolbar.tsx` to refresh mapping markers reactively.
+- [x] **AI Spatial Analyst Integration**: Wire up `AreaAnalysisPanel.tsx` with backend `/analyze` endpoint to generate AI-assisted patrol recommendations using GLM.
 
 ---
 
@@ -37,8 +34,8 @@
 
 | Sprint | Focus | Status |
 | :--- | :--- | :--- |
-| **Sprint 4 (Current)** | AI & Authentication Integration | ✅ Done |
-| **Sprint 5** | Case Explorer & Map Integration | ⏳ Planned |
+| **Sprint 4** | AI & Authentication Integration | ✅ Done |
+| **Sprint 5 (Current)** | Case Explorer & Map Integration | ✅ Done |
 | **Sprint 6** | Criminal Network & Live Analytics | ⏳ Planned |
 | **Sprint 7** | Reports & Settings Backend | ⏳ Planned |
 | **Sprint 8** | Testing, Polish & Deployment | ⏳ Planned |
@@ -53,9 +50,9 @@
 | Area | Task | Owner | Status |
 | :--- | :--- | :--- | :--- |
 | **Case Explorer** | List view with pagination | @dev‑case | ✅ Done |
-| **Case Explorer** | Detailed case view with map & network integration | @dev‑case | 🟡 In Progress |
+| **Case Explorer** | Detailed case view with map & network integration | @dev‑case | ✅ Done |
 | **Map** | Display interactive map (Leaflet) with markers | @dev‑map | ✅ Done |
-| **Map** | Populate markers from backend service | @dev‑map | 🟡 In Progress |
+| **Map** | Populate markers from backend service | @dev‑map | ✅ Done |
 
 ---
 
@@ -102,3 +99,4 @@
 - **Sprint 1 (Phase 2): Foundations** - Core product design, shell layouts, routing setup.
 - **Sprint 2 (Phase 3): Design System** - Setup themes, variables, and common buttons/UI components.
 - **Sprint 3 (Phase 4): Architecture** - Define API endpoints, axios configuration, and Redux store state context.
+- **Sprint 4 (Phase 5): AI & Authentication Integration** - Google SSO backend/frontend integration, JWT session protection, real LLM AI chat, and evidence citation backend logic.

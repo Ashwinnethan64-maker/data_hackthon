@@ -1,4 +1,5 @@
-import React, { useRef } from 'react';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowUpDown, ArrowUp, ArrowDown, ExternalLink } from 'lucide-react';
 import { Card } from '../../../components/Card';
 import { Button } from '../../../components/Button';
@@ -17,14 +18,14 @@ interface CaseTableProps {
   sortColumn: keyof CaseRecord;
   sortDirection: 'asc' | 'desc';
   onSort: (column: keyof CaseRecord) => void;
-  columnWidths: Record<string, number>;
-  setColumnWidths: React.Dispatch<React.SetStateAction<Record<string, number>>>;
   currentPage: number;
   setCurrentPage: (page: number) => void;
   pageSize: number;
   setPageSize: (size: number) => void;
   totalPages: number;
   onRowClick: (id: string) => void;
+  columnWidths?: Record<string, number>;
+  setColumnWidths?: any;
 }
 
 export function CaseTable({
@@ -38,8 +39,6 @@ export function CaseTable({
   sortColumn,
   sortDirection,
   onSort,
-  columnWidths,
-  setColumnWidths,
   currentPage,
   setCurrentPage,
   pageSize,
@@ -47,37 +46,7 @@ export function CaseTable({
   totalPages,
   onRowClick,
 }: CaseTableProps) {
-  const resizingColumn = useRef<string | null>(null);
-  const startX = useRef<number>(0);
-  const startWidth = useRef<number>(0);
-
-  const startResize = (e: React.MouseEvent, columnKey: string) => {
-    e.preventDefault();
-    e.stopPropagation();
-    resizingColumn.current = columnKey;
-    startX.current = e.clientX;
-    startWidth.current = columnWidths[columnKey] || 150;
-
-    document.addEventListener('mousemove', handleResize);
-    document.addEventListener('mouseup', stopResize);
-  };
-
-  const handleResize = (e: MouseEvent) => {
-    if (!resizingColumn.current) return;
-    const deltaX = e.clientX - startX.current;
-    const newWidth = Math.max(80, startWidth.current + deltaX);
-
-    setColumnWidths((prev) => ({
-      ...prev,
-      [resizingColumn.current!]: newWidth,
-    }));
-  };
-
-  const stopResize = () => {
-    resizingColumn.current = null;
-    document.removeEventListener('mousemove', handleResize);
-    document.removeEventListener('mouseup', stopResize);
-  };
+  const navigate = useNavigate();
 
   // Render sort icon helper
   const renderSortIcon = (columnKey: keyof CaseRecord) => {
@@ -115,10 +84,10 @@ export function CaseTable({
   }
 
   return (
-    <Card className="flex flex-col gap-4 overflow-hidden border border-white/10 bg-slate-900/60 p-0">
+    <div className="glass-panel rounded-2xl flex flex-col gap-4 overflow-hidden border border-white/10 bg-slate-900/60">
       {/* Scrollable table grid */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse text-left text-sm text-slate-300">
+      <div className="overflow-x-auto w-full">
+        <table className="w-full min-w-max border-collapse text-left text-sm text-slate-300">
           <thead className="sticky top-0 z-10 bg-slate-950/80 backdrop-blur border-b border-white/10 text-xs font-semibold uppercase tracking-wider text-slate-400">
             <tr>
               {/* Selection Checkbox Header */}
@@ -133,122 +102,106 @@ export function CaseTable({
 
               {visibleColumns.firNumber && (
                 <th
-                  style={{ width: columnWidths.firNumber }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('firNumber')}
                 >
                   <div className="flex items-center">
                     FIR Number {renderSortIcon('firNumber')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'firNumber')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.crimeCategory && (
                 <th
-                  style={{ width: columnWidths.crimeCategory }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('crimeCategory')}
                 >
                   <div className="flex items-center">
                     Crime Category {renderSortIcon('crimeCategory')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'crimeCategory')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.district && (
                 <th
-                  style={{ width: columnWidths.district }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('district')}
                 >
                   <div className="flex items-center">
                     District {renderSortIcon('district')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'district')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.policeStation && (
                 <th
-                  style={{ width: columnWidths.policeStation }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('policeStation')}
                 >
                   <div className="flex items-center">
                     Station {renderSortIcon('policeStation')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'policeStation')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.incidentDate && (
                 <th
-                  style={{ width: columnWidths.incidentDate }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('incidentDate')}
                 >
                   <div className="flex items-center">
                     Incident Date {renderSortIcon('incidentDate')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'incidentDate')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.status && (
                 <th
-                  style={{ width: columnWidths.status }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('status')}
                 >
                   <div className="flex items-center">
                     Status {renderSortIcon('status')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'status')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.priority && (
                 <th
-                  style={{ width: columnWidths.priority }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('priority')}
                 >
                   <div className="flex items-center">
                     Priority {renderSortIcon('priority')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'priority')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.officer && (
                 <th
-                  style={{ width: columnWidths.officer }}
-                  className="relative px-4 py-4 font-semibold select-none cursor-pointer"
+                  className="px-4 py-4 font-semibold select-none cursor-pointer whitespace-nowrap"
                   onClick={() => onSort('officer')}
                 >
                   <div className="flex items-center">
                     Officer {renderSortIcon('officer')}
                   </div>
-                  <div onMouseDown={(e) => startResize(e, 'officer')} className="absolute right-0 top-0 bottom-0 w-1 cursor-col-resize hover:bg-cyan/40 bg-transparent" />
                 </th>
               )}
 
               {visibleColumns.accusedCount && (
-                <th style={{ width: columnWidths.accusedCount }} className="px-4 py-4 font-semibold">
+                <th className="px-4 py-4 font-semibold whitespace-nowrap">
                   Accused
                 </th>
               )}
 
               {visibleColumns.victimCount && (
-                <th style={{ width: columnWidths.victimCount }} className="px-4 py-4 font-semibold">
+                <th className="px-4 py-4 font-semibold whitespace-nowrap">
                   Victims
                 </th>
               )}
 
               {visibleColumns.actions && (
-                <th style={{ width: columnWidths.actions }} className="px-4 py-4 font-semibold text-center">
+                <th className="px-4 py-4 font-semibold text-center whitespace-nowrap">
                   Actions
                 </th>
               )}
@@ -277,53 +230,53 @@ export function CaseTable({
                   </td>
 
                   {visibleColumns.firNumber && (
-                    <td className="px-4 py-3 font-mono text-cyan font-medium">{record.firNumber}</td>
+                    <td className="px-4 py-3 font-mono text-cyan font-medium whitespace-nowrap">{record.firNumber}</td>
                   )}
 
                   {visibleColumns.crimeCategory && (
-                    <td className="px-4 py-3 text-white font-semibold">{record.crimeCategory}</td>
+                    <td className="px-4 py-3 text-white font-semibold whitespace-nowrap">{record.crimeCategory}</td>
                   )}
 
-                  {visibleColumns.district && <td className="px-4 py-3">{record.district}</td>}
+                  {visibleColumns.district && <td className="px-4 py-3 whitespace-nowrap">{record.district}</td>}
 
-                  {visibleColumns.policeStation && <td className="px-4 py-3">{record.policeStation}</td>}
+                  {visibleColumns.policeStation && <td className="px-4 py-3 whitespace-nowrap">{record.policeStation}</td>}
 
                   {visibleColumns.incidentDate && (
-                    <td className="px-4 py-3">{new Date(record.incidentDate).toLocaleDateString('en-IN')}</td>
+                    <td className="px-4 py-3 whitespace-nowrap">{new Date(record.incidentDate).toLocaleDateString('en-IN')}</td>
                   )}
 
                   {visibleColumns.status && (
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <CaseStatusBadge status={record.status} />
                     </td>
                   )}
 
                   {visibleColumns.priority && (
-                    <td className="px-4 py-3">
+                    <td className="px-4 py-3 whitespace-nowrap">
                       <PriorityBadge priority={record.priority} />
                     </td>
                   )}
 
                   {visibleColumns.officer && (
-                    <td className="px-4 py-3">
-                      <div className="text-white font-medium">{record.officer.name}</div>
-                      <div className="text-xs text-slate-500">{record.officer.rank}</div>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <div className="text-white font-medium whitespace-nowrap">{record.officer.name}</div>
+                      <div className="text-xs text-slate-500 whitespace-nowrap">{record.officer.rank}</div>
                     </td>
                   )}
 
                   {visibleColumns.accusedCount && (
-                    <td className="px-4 py-3 text-center text-white">{record.accused.length}</td>
+                    <td className="px-4 py-3 text-center text-white whitespace-nowrap">{record.accused.length}</td>
                   )}
 
                   {visibleColumns.victimCount && (
-                    <td className="px-4 py-3 text-center text-white">{record.victims.length}</td>
+                    <td className="px-4 py-3 text-center text-white whitespace-nowrap">{record.victims.length}</td>
                   )}
 
                   {visibleColumns.actions && (
-                    <td className="px-4 py-3 text-center" onClick={(e) => e.stopPropagation()}>
+                    <td className="px-4 py-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                       <Button
                         variant="ghost"
-                        onClick={() => onRowClick(record.id)}
+                        onClick={() => navigate(`/case/${record.firNumber}`)}
                         className="p-2 text-slate-400 hover:text-white"
                       >
                         <ExternalLink className="h-4 w-4" />
@@ -338,8 +291,8 @@ export function CaseTable({
       </div>
 
       {/* Pagination Footer */}
-      <div className="flex flex-wrap items-center justify-between gap-4 border-t border-white/10 bg-slate-950/40 px-6 py-4">
-        <div className="flex items-center gap-4 text-xs text-slate-400">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-white/10 bg-slate-950/40 px-6 py-4">
+        <div className="flex flex-col sm:flex-row items-center gap-3 sm:gap-4 text-xs text-slate-400 w-full sm:w-auto justify-between sm:justify-start">
           <span>
             Showing <strong className="text-white">{cases.length}</strong> of{' '}
             <strong className="text-white">{totalCount}</strong> FIRs
@@ -364,17 +317,17 @@ export function CaseTable({
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center justify-between sm:justify-end gap-2 w-full sm:w-auto">
           <Button
             variant="secondary"
-            className="py-1.5 px-3 text-xs"
+            className="py-1.5 px-3 text-xs flex-1 sm:flex-none"
             disabled={currentPage === 1}
             onClick={() => setCurrentPage(currentPage - 1)}
           >
             Previous
           </Button>
 
-          <div className="flex items-center gap-1">
+          <div className="hidden sm:flex items-center gap-1">
             {Array.from({ length: totalPages }).map((_, index) => {
               const pageNum = index + 1;
               const isCurrent = pageNum === currentPage;
@@ -394,9 +347,13 @@ export function CaseTable({
             })}
           </div>
 
+          <span className="text-xs text-slate-400 sm:hidden px-2 font-medium">
+            Page {currentPage} of {totalPages}
+          </span>
+
           <Button
             variant="secondary"
-            className="py-1.5 px-3 text-xs"
+            className="py-1.5 px-3 text-xs flex-1 sm:flex-none"
             disabled={currentPage === totalPages || totalPages === 0}
             onClick={() => setCurrentPage(currentPage + 1)}
           >
@@ -404,6 +361,6 @@ export function CaseTable({
           </Button>
         </div>
       </div>
-    </Card>
+    </div>
   );
 }

@@ -5,6 +5,18 @@ const dbService = require('../services/dbService');
 const HISTORY_TABLE = 'ai_history';
 const FIRS_TABLE = 'firs';
 
+// Safely parse JSON properties from Catalyst string fields if needed
+function parseJSONField(field) {
+  if (typeof field === 'string') {
+    try {
+      return JSON.parse(field);
+    } catch {
+      return field;
+    }
+  }
+  return field;
+}
+
 const KANNADA_TRANSLATIONS = {
   summaryBase: 'ನಾನು ವಿಚಾರಣೆಗೆ ಹೊಂದಾಣಿಕೆಯಾಗುವ {count} ಪ್ರಕರಣ(ಗಳನ್ನು) ಕಂಡುಕೊಂಡಿದ್ದೇನೆ.',
   strongestSignal: ' ಪ್ರಮುಖ ಅಂಶವೆಂದರೆ {district} ನಲ್ಲಿ {crime} ಚಟುವಟಿಕೆ. ಪುರಾವೆಗಳು ಪ್ರಸ್ತುತ ದಾಖಲೆಯನ್ನು ಸಮೀಪದ ಘಟನೆಗಳಿಗೆ ಸಂಪರ್ಕಿಸುತ್ತವೆ.',
@@ -74,11 +86,22 @@ router.post('/chat', async (req, res) => {
     let allFirs = await dbService.getAllRows(req, FIRS_TABLE);
     let filtered = allFirs;
     
-    if (crime) filtered = filtered.filter(c => c.crimeCategory && c.crimeCategory.toLowerCase().includes(crime.toLowerCase()));
-    if (district) filtered = filtered.filter(c => c.district && c.district.toLowerCase().includes(district.toLowerCase()));
-    if (status) {
-      if (status === 'Closed') filtered = filtered.filter(c => c.status === 'Closed');
-      else filtered = filtered.filter(c => c.status !== 'Closed');
+    // 1. Check if the query refers to a specific FIR number in our database
+    const targetCase = allFirs.find(c => c.firNumber && lowerQuery.includes(c.firNumber.toLowerCase()));
+    if (targetCase) {
+      // Prioritize the target case, and pull related cases in the same district/station for comparison
+      const related = allFirs.filter(c => c.firNumber !== targetCase.firNumber && 
+        (c.policeStation === targetCase.policeStation || c.district === targetCase.district)
+      );
+      filtered = [targetCase, ...related];
+    } else {
+      // 2. Otherwise apply semantic/intent filtering keywords
+      if (crime) filtered = filtered.filter(c => c.crimeCategory && c.crimeCategory.toLowerCase().includes(crime.toLowerCase()));
+      if (district) filtered = filtered.filter(c => c.district && c.district.toLowerCase().includes(district.toLowerCase()));
+      if (status) {
+        if (status === 'Closed') filtered = filtered.filter(c => c.status === 'Closed');
+        else filtered = filtered.filter(c => c.status !== 'Closed');
+      }
     }
 
     if (isRepeat) {
@@ -128,7 +151,12 @@ ${JSON.stringify(filtered.slice(0, 3).map(c => ({
   policeStation: c.policeStation,
   incidentDate: c.incidentDate,
   status: c.status,
-  priority: c.priorityLevel || c.priority || 'Medium'
+  priority: c.priorityLevel || c.priority || 'Medium',
+  applicableActs: parseJSONField(c.applicableActs) || [],
+  victims: parseJSONField(c.victims) || [],
+  accused: parseJSONField(c.accused) || [],
+  evidence: parseJSONField(c.evidence) || [],
+  timeline: parseJSONField(c.timeline) || []
 })), null, 2)}
 
 Provide a summary answering the user query.`;
@@ -140,8 +168,8 @@ Provide a summary answering the user query.`;
       ];
 
       summary = await quickmlService.chatWithGLM(req, messagesPayload);
-    } catch (err) {
-      console.warn('[WARN] QuickML GLM query failed, using rule-based fallback:', err.message);
+    } catch (error) {
+      console.warn('[WARN] QuickML GLM query failed, using rule-based fallback:', error.message);
 
       if (filtered.length === 0) {
         summary = language === 'kn' ? KANNADA_TRANSLATIONS.noResults : 'I could not find any matching cases based on your query.';

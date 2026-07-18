@@ -59,17 +59,17 @@ export function useCaseExplorer() {
 
   // Column Widths for Resizing
   const [columnWidths, setColumnWidths] = useState<Record<string, number>>({
-    firNumber: 160,
-    crimeCategory: 140,
-    district: 120,
-    policeStation: 150,
-    incidentDate: 160,
+    firNumber: 180,
+    crimeCategory: 160,
+    district: 160,
+    policeStation: 160,
+    incidentDate: 120,
     status: 120,
-    priority: 120,
-    officer: 160,
-    accusedCount: 100,
-    victimCount: 100,
-    actions: 100,
+    priority: 110,
+    officer: 180,
+    accusedCount: 85,
+    victimCount: 85,
+    actions: 70,
   });
 
   // Query to get paginated cases from backend

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useLocation } from 'react-router-dom';
 import { conversationThreads, mockResponses } from '../data/mockInvestigationData';
 import { generateAiResponse } from '../services/aiService';
 import type { AiConversationThread, AiMessage, AiResponse, AiContext, Language } from '../types';
@@ -41,8 +42,13 @@ function buildSystemMessage(lang: Language): AiMessage {
 }
 
 export function useAiInvestigator() {
+  const location = useLocation();
+  const initialQuery = location.state?.query || location.state?.prefillPrompt;
+
   const [threads, setThreads] = useState<AiConversationThread[]>(conversationThreads);
-  const [selectedThreadId, setSelectedThreadId] = useState(conversationThreads[0]?.id ?? '');
+  const [selectedThreadId, setSelectedThreadId] = useState(() => {
+    return initialQuery ? '' : (conversationThreads[0]?.id ?? '');
+  });
 
   const [language, setLanguage] = useState<Language>('en');
   const [context, setContext] = useState<AiContext>({});
@@ -102,6 +108,15 @@ export function useAiInvestigator() {
     return () => {
       abortRef.current?.abort();
     };
+  }, []);
+
+  // Trigger initial query if passed from route state
+  useEffect(() => {
+    if (initialQuery) {
+      sendQuery(initialQuery);
+      // Clear navigation state so a page refresh doesn't re-trigger the query
+      window.history.replaceState({}, document.title);
+    }
   }, []);
 
   const messages = messagesByThread[selectedThreadId] ?? [];
