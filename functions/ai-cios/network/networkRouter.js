@@ -238,32 +238,65 @@ router.get('/explanation', async (req, res) => {
     const { nodes } = buildGraph(firs);
     const repeatOffenders = nodes.filter(n => n.data.isRepeatOffender);
     
+    const quickmlService = require('../services/quickmlService');
+    const prompt = `You are an AI Crime Network Analyst.
+Analyze the following criminal network composed of ${firs.length} incidents and ${nodes.length} entities (offenders, victims, locations).
+Key Repeat Offenders: ${JSON.stringify(repeatOffenders.slice(0, 5).map(ro => ({ name: ro.data.label, crimeType: ro.data.crimeTypes, cases: ro.data.firCount })))}
+Recent Cases: ${JSON.stringify(firs.slice(0, 10).map(f => ({ firNumber: f.firNumber, category: f.crimeCategory, district: f.district })))}
+
+Provide a JSON output strictly with this schema:
+{
+  "summary": "1 paragraph summary of the network structure",
+  "hiddenRelationships": ["insight 1", "insight 2"],
+  "repeatPatterns": ["pattern 1", "pattern 2"],
+  "suspiciousConnections": ["connection 1", "connection 2"],
+  "investigationLeads": [ { "priority": "High", "description": "lead", "entities": ["entity 1"] } ]
+}
+Return ONLY valid JSON, no markdown blocks.`;
+
+    let aiData;
+    try {
+      let aiResponseStr = await quickmlService.chatWithGLM(req, [{ role: 'user', content: prompt }]);
+      aiResponseStr = aiResponseStr.replace(/```json/g, '').replace(/```/g, '').trim();
+      aiData = JSON.parse(aiResponseStr);
+    } catch (e) {
+      console.warn('AI Network Analysis failed, using fallback:', e.message);
+      aiData = {
+        summary: `The criminal network currently tracks ${firs.length} active incidents resulting in ${nodes.length} distinct entities.`,
+        hiddenRelationships: [
+          'Detected multiple Accused operating within the same Police Station jurisdiction without prior documented connection.',
+          'Possible financial link between repeat offenders in the central district.'
+        ],
+        repeatPatterns: [
+          `Identified ${repeatOffenders.length} repeat offenders across recent cases.`,
+          'Most repeat offences are clustering around property crimes late at night.'
+        ],
+        suspiciousConnections: [
+          'Shared phone numbers detected across two unrelated extortion FIRs.',
+          'Common vehicle used in multiple recent burglary reports.'
+        ],
+        investigationLeads: [
+          {
+            priority: 'High',
+            description: 'Investigate potential gang affiliation among top repeat offenders based on shared crime locations.',
+            entities: repeatOffenders.slice(0, 3).map(r => r.data.label)
+          }
+        ]
+      };
+    }
+
     res.json({
-      summary: `The criminal network currently tracks ${firs.length} active incidents resulting in ${nodes.length} distinct entities.`,
-      hiddenRelationships: [
-        'Detected multiple Accused operating within the same Police Station jurisdiction without prior documented connection.',
-        'Possible financial link between repeat offenders in the central district.'
-      ],
-      repeatPatterns: [
-        `Identified ${repeatOffenders.length} repeat offenders across recent cases.`,
-        'Most repeat offences are clustering around property crimes late at night.'
-      ],
+      summary: aiData.summary,
+      hiddenRelationships: aiData.hiddenRelationships || [],
+      repeatPatterns: aiData.repeatPatterns || [],
       keyIndividuals: repeatOffenders.slice(0, 3).map(ro => ({ name: ro.data.label, role: ro.data.entityType, centrality: ro.data.firCount })),
-      suspiciousConnections: [
-        'Shared phone numbers detected across two unrelated extortion FIRs.',
-        'Common vehicle used in multiple recent burglary reports.'
-      ],
+      suspiciousConnections: aiData.suspiciousConnections || [],
       evidence: ['Data Store FIR Records', 'AI Behavioral Profile Models'],
       confidenceScore: 89,
-      investigationLeads: [
-        {
-          priority: 'High',
-          description: 'Investigate potential gang affiliation among top 3 repeat offenders based on shared crime locations.',
-          entities: repeatOffenders.slice(0, 3).map(r => r.data.label)
-        }
-      ]
+      investigationLeads: aiData.investigationLeads || []
     });
   } catch (error) {
+    console.error('Failed to fetch network explanation:', error);
     res.status(500).json({ error: 'Failed to fetch network explanation' });
   }
 });

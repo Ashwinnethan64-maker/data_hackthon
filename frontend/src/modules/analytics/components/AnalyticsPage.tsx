@@ -72,7 +72,7 @@ export function AnalyticsPage() {
         />
       </div>
 
-      <ExportDialog isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} />
+      <ExportDialog isOpen={isExportOpen} onClose={() => setIsExportOpen(false)} filters={filters} />
     </div>
   );
 }

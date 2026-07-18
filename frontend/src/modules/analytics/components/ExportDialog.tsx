@@ -1,28 +1,69 @@
 import { X, FileSpreadsheet, FileDown, CheckCircle } from 'lucide-react';
 import { useState } from 'react';
 
+import { AnalyticsFilters } from '../types';
+import { apiRequest } from '../../../utils/api';
+import { useAuth } from '../../../store/AuthContext';
+
 interface ExportDialogProps {
   isOpen: boolean;
   onClose: () => void;
+  filters: AnalyticsFilters;
 }
 
-export function ExportDialog({ isOpen, onClose }: ExportDialogProps) {
+export function ExportDialog({ isOpen, onClose, filters }: ExportDialogProps) {
   const [downloading, setDownloading] = useState(false);
   const [success, setSuccess] = useState(false);
+  const { user } = useAuth();
+  
+  const API_BASE = '/server/ai-cios';
 
   if (!isOpen) return null;
 
-  const handleExport = (type: string) => {
+  const handleExport = async (format: 'pdf' | 'csv') => {
     setDownloading(true);
     setSuccess(false);
-    setTimeout(() => {
+
+    try {
+      const reportFilters = {
+        dateStart: filters.dateRange[0] || '',
+        dateEnd: filters.dateRange[1] || '',
+        district: filters.districts[0] || '',
+        policeStation: filters.policeStations[0] || '',
+        crimeCategory: filters.crimeCategories[0] || '',
+        severity: filters.riskLevels[0] || '',
+        status: filters.statuses[0] || '',
+      };
+
+      const res = await apiRequest<any>('/reports/generate', {
+        method: 'POST',
+        body: JSON.stringify({
+          type: 'Analytics Executive Summary',
+          format,
+          filters: reportFilters,
+          officer: user?.name || 'Investigator'
+        })
+      });
+
+      if (res.success) {
+        const link = document.createElement('a');
+        link.href = `${API_BASE}${res.downloadUrl}`;
+        link.setAttribute('download', '');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        setSuccess(true);
+        setTimeout(() => {
+          setSuccess(false);
+          onClose();
+        }, 1200);
+      }
+    } catch (err) {
+      console.error('Export failed', err);
+    } finally {
       setDownloading(false);
-      setSuccess(true);
-      setTimeout(() => {
-        setSuccess(false);
-        onClose();
-      }, 1200);
-    }, 1500);
+    }
   };
 
   return (

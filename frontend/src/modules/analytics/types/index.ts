@@ -19,8 +19,8 @@ export type CasePriority = 'Routine' | 'High' | 'Critical';
 export interface FIR {
   id: string;
   firNumber: string;
-  category: CrimeCategory;
-  date: string; // YYYY-MM-DD
+  crimeCategory: CrimeCategory;
+  incidentDate: string; // YYYY-MM-DD
   time: string; // HH:mm
   district: string;
   policeStation: string;

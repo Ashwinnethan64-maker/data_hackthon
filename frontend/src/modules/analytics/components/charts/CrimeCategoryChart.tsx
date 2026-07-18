@@ -8,7 +8,7 @@ interface CrimeCategoryChartProps {
 export function CrimeCategoryChart({ firs }: CrimeCategoryChartProps) {
   const categoryData: Record<string, number> = {};
   firs.forEach((f) => {
-    categoryData[f.category] = (categoryData[f.category] || 0) + 1;
+    categoryData[f.crimeCategory] = (categoryData[f.crimeCategory] || 0) + 1;
   });
 
   const pieData = Object.entries(categoryData).map(([name, value]) => ({

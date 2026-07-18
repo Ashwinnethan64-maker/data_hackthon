@@ -9,8 +9,8 @@ export function CrimeTrendChart({ firs }: CrimeTrendChartProps) {
   // Aggregate by Month
   const monthlyData: Record<string, number> = {};
   firs.forEach((f) => {
-    if (!f.date) return;
-    const month = f.date.substring(0, 7); // YYYY-MM
+    if (!f.incidentDate) return;
+    const month = f.incidentDate.substring(0, 7); // YYYY-MM
     monthlyData[month] = (monthlyData[month] || 0) + 1;
   });
 

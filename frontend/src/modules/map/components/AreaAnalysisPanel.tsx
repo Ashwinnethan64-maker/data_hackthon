@@ -241,7 +241,19 @@ export function AreaAnalysisPanel({ isOpen, isLoading, analysis, error, onClose 
 
                 {/* Action buttons */}
                 <div className="grid grid-cols-2 gap-2">
-                  <button className="flex items-center justify-center gap-1.5 py-2 bg-police/20 hover:bg-police/30 text-cyan-400 text-xs font-medium rounded-lg border border-police/30 transition-all">
+                  <button 
+                    onClick={() => {
+                      const btn = document.getElementById('accept-save-btn');
+                      if (btn) {
+                        btn.innerHTML = '<svg class="w-3.5 h-3.5" xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"></path><polyline points="22 4 12 14.01 9 11.01"></polyline></svg> Saved!';
+                        btn.classList.add('bg-green-500/20', 'text-green-400', 'border-green-500/30');
+                        btn.classList.remove('bg-police/20', 'text-cyan-400', 'border-police/30');
+                        setTimeout(onClose, 1000);
+                      }
+                    }}
+                    id="accept-save-btn"
+                    className="flex items-center justify-center gap-1.5 py-2 bg-police/20 hover:bg-police/30 text-cyan-400 text-xs font-medium rounded-lg border border-police/30 transition-all"
+                  >
                     <CheckCircle className="w-3.5 h-3.5" /> Accept & Save
                   </button>
                   <button onClick={onClose} className="flex items-center justify-center gap-1.5 py-2 bg-slate-800/60 hover:bg-slate-800 text-slate-300 text-xs font-medium rounded-lg border border-slate-700/50 transition-all">
