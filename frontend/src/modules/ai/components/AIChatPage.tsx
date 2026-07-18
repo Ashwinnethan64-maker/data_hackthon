@@ -32,7 +32,7 @@ export function AIChatPage() {
     language,
     toggleLanguage,
     isRecording,
-    simulateSpeechToText,
+    startSpeechToText,
     activeSpeechMessageId,
     simulateTextToSpeech,
   } = useAiInvestigator();
@@ -151,7 +151,7 @@ export function AIChatPage() {
                 onSubmit={() => sendQuery(query)}
                 value={query}
                 isRecording={isRecording}
-                onRecord={simulateSpeechToText}
+                onRecord={startSpeechToText}
               />
               <div className="flex items-center gap-2">
                 <div className={clsx(

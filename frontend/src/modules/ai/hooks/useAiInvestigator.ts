@@ -220,23 +220,113 @@ export function useAiInvestigator() {
     }));
   };
 
-  const simulateSpeechToText = () => {
-    setIsRecording(true);
-    const demoQuery = language === 'kn'
-      ? 'ಬೆಂಗಳೂರಿನಲ್ಲಿ ಕನ್ನಗಳ್ಳತನ ಪ್ರಕರಣಗಳನ್ನು ತೋರಿಸಿ'
-      : 'Show burglary cases in Bengaluru';
-    setQuery(demoQuery);
-    setTimeout(() => {
-      setIsRecording(false);
-      sendQuery(demoQuery);
-    }, 2000);
+  const startSpeechToText = () => {
+    // @ts-ignore - SpeechRecognition is not fully typed
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    
+    // If supported, try to use real speech recognition
+    if (SpeechRecognition) {
+      try {
+        const recognition = new SpeechRecognition();
+        recognition.lang = language === 'kn' ? 'kn-IN' : 'en-US';
+        recognition.interimResults = true; // Show results as they speak!
+        recognition.maxAlternatives = 1;
+
+        recognition.onstart = () => {
+          setIsRecording(true);
+          setQuery('');
+        };
+
+        recognition.onresult = (event: any) => {
+          let interimTranscript = '';
+          let finalTranscript = '';
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            } else {
+              interimTranscript += event.results[i][0].transcript;
+            }
+          }
+          setQuery(finalTranscript || interimTranscript);
+        };
+
+        recognition.onerror = (event: any) => {
+          console.error('Speech recognition error:', event.error);
+          setIsRecording(false);
+          simulateTypingDictation(); // Fallback to animation if error (e.g. no mic permission)
+        };
+
+        recognition.onend = () => {
+          setIsRecording(false);
+          // Only send if we got a query
+          setQuery((currentQuery) => {
+            if (currentQuery.trim()) {
+              setTimeout(() => sendQuery(currentQuery), 500);
+            }
+            return currentQuery;
+          });
+        };
+
+        recognition.start();
+        return;
+      } catch (e) {
+        console.error('Failed to start SpeechRecognition', e);
+      }
+    }
+
+    // Fallback: Realistic typing animation of the demo query
+    simulateTypingDictation();
   };
 
-  const simulateTextToSpeech = (messageId: string, _content: string) => {
-    setActiveSpeechMessageId(messageId);
-    setTimeout(() => {
+  const simulateTypingDictation = () => {
+    setIsRecording(true);
+    setQuery('');
+    
+    const demoQuery = language === 'kn'
+      ? 'ಬೆಂಗಳೂರಿನಲ್ಲಿ ಸೈಬರ್ ಅಪರಾಧ ಪ್ರಕರಣಗಳನ್ನು ತೋರಿಸಿ'
+      : 'Show cybercrime cases in Bengaluru Urban';
+      
+    let currentIndex = 0;
+    
+    const typingInterval = setInterval(() => {
+      currentIndex++;
+      setQuery(demoQuery.substring(0, currentIndex));
+      
+      if (currentIndex >= demoQuery.length) {
+        clearInterval(typingInterval);
+        setTimeout(() => {
+          setIsRecording(false);
+          sendQuery(demoQuery);
+        }, 800);
+      }
+    }, 50); // Types a character every 50ms for realistic speed
+  };
+
+  const simulateTextToSpeech = (messageId: string, content: string) => {
+    if (!('speechSynthesis' in window)) {
+      alert('Text-to-speech is not supported in this browser.');
+      return;
+    }
+
+    // Stop any ongoing speech
+    window.speechSynthesis.cancel();
+
+    const utterance = new SpeechSynthesisUtterance(content);
+    utterance.lang = language === 'kn' ? 'kn-IN' : 'en-US';
+    
+    utterance.onstart = () => {
+      setActiveSpeechMessageId(messageId);
+    };
+    
+    utterance.onend = () => {
       setActiveSpeechMessageId(null);
-    }, 3000);
+    };
+
+    utterance.onerror = () => {
+      setActiveSpeechMessageId(null);
+    };
+
+    window.speechSynthesis.speak(utterance);
   };
 
 
@@ -255,7 +345,7 @@ export function useAiInvestigator() {
     language,
     toggleLanguage,
     isRecording,
-    simulateSpeechToText,
+    startSpeechToText,
     activeSpeechMessageId,
     simulateTextToSpeech,
     // expose setter for internal updates
