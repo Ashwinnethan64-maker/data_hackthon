@@ -58,38 +58,30 @@ You need to generate a Google Client ID to enable the Google login popup flow:
 
 ---
 
-### 2. Zoho Catalyst Console Setup (Database & Auth)
+### 2. Zoho Catalyst Console Setup (Database, Auth & CORS)
 
-Configure the following items in your [Zoho Catalyst Console](https://console.catalyst.zoho.com/):
+To configure the entire database schema, security rules, allowed CORS domains, and user roles automatically inside a fresh project:
 
-#### A. Database Schema
+1. Go to your [Zoho Catalyst Console](https://console.catalyst.zoho.com/) (project selection screen).
+2. Click on the **Settings** icon (located on the right side of the top bar).
+3. Select **Infrastructure as Code** (under the **General Settings** section).
+4. Click on **Import New Project**.
+5. Enter a name for your new project, and upload the **`project-template.zip`** file located in the root of this repository.
+6. Click the **Import** button. Catalyst will automatically spin up a fresh project pre-configured with all necessary datastore tables, columns, constraints, and CORS authorized domains.
 
-1. Go to **Cloud Scale** > **Data Store** in your project sidebar.
-2. Click **Create Table** and name it **`officers`**.
-3. Create the following custom columns (all columns of type **`VarChar` / Text** with default lengths):
-   - `username` (holds email ID, e.g. investigator.ash@police.in)
-   - `password` (holds encrypted passwords)
-   - `name` (officer's full name)
-   - `role` (investigator, analyst, supervisor, or administrator)
-   - `policeStation` (assigned station)
-   - `district` (assigned district)
+---
 
-_Note: On your first login attempt locally, the server will automatically seed the standard sandbox developer accounts (`admin`, `officer`, `analyst`, `supervisor`) with dummy credentials so you can start testing immediately._
+### 3. Setting Up the QuickML Connection
 
-#### B. Enable Third-Party Authentication
+The application uses Zoho QuickML for advanced AI model execution. You must set up and authorize this integration connection manually in the Catalyst console:
 
-1. Navigate to **Security & Identity** > **Authentication**.
-2. Go to the **Third-party Authentication** tab.
-3. Toggle the **Enable** switch to **On**. _(If disabled, Zoho's endpoint will return a 500 error during handshakes)_.
-4. Go to **Native Catalyst Authentication** and ensure **Public Signup** is enabled.
-
-#### C. Authorize Local Development Origins (CORS)
-
-1. In the **Authentication** tab, click on the **Authorized Domains** sub-tab.
-2. Click **Add Domain** and add:
-   - `http://localhost:3000` — Tick the **CORS** checkmark and click **Save**.
-   - `http://localhost:5173` — Tick the **CORS** checkmark and click **Save**.
-     _(Note: Without these entries, the browser will block session cookies/handshakes locally due to Same-Origin Policy)._
+1. In the Catalyst Console sidebar under **Cloud Scale**, navigate to **Security & Identity** > **Connections**.
+2. Click **Create Connection** and configure:
+   - **Service Name:** Select **`Catalyst by Zoho`**.
+   - **Connection Name:** Enter **`quickml_connection`**.
+   - **Scopes:** Select or add `QuickML.deployment.READ` (or whatever scope is required for QuickML access).
+3. Click **Create and Connect**.
+4. You will be redirected to an authorization screen. Click **Connect**, and on the next redirect, tick the checkbox (allow access to account) and click the **Accept** button to authorize the connection under your Zoho account.
 
 ---
 
@@ -115,18 +107,34 @@ catalyst project:use
 
 ### Step 2: Configure Environment Variables
 
-Copy the frontend environment variable template:
+Copy the environment variable templates for both the frontend and backend:
 
 ```bash
 cp frontend/.env.example frontend/.env
+cp functions/ai-cios/.env.example functions/ai-cios/.env
 ```
 
-Open `frontend/.env` and update your keys:
+#### Extracting your Catalyst IDs
 
-- `VITE_GOOGLE_CLIENT_ID`: Your Google OAuth 2.0 Client ID.
-- `VITE_CATALYST_CLIENT_ID`: Your Zoho Catalyst Org ID (Environment ZAID).
+Open your new project's dashboard in the Zoho Catalyst Console. The URL in the browser address bar will look like this:
 
-_Note: For production, Vite compiles environment variables at build-time. When compiling the application for production (`npm run build`), ensure that your `frontend/.env` is configured with your production Google Client ID. No runtime configuration is needed on the server, as the Catalyst API base path dynamically resolves to `/server/ai-cios/` automatically._
+```
+https://console.catalyst.zoho.in/baas/<Organization ID>/project/<Project ID>/Development#/...
+```
+
+Extract the following IDs from the URL:
+
+- **Organization ID (ZAID):** The number directly after `/baas/`.
+- **Project ID:** The number directly after `/project/`.
+
+#### Update variables:
+
+1. Open **`frontend/.env`** and configure:
+   - `VITE_GOOGLE_CLIENT_ID`: Your Google OAuth 2.0 Client ID.
+   - `VITE_CATALYST_CLIENT_ID`: Your **Organization ID (ZAID)**.
+2. Open **`functions/ai-cios/.env`** and configure:
+   - `CATALYST_ORG_ID`: Your **Organization ID (ZAID)**.
+   - `CATALYST_PROJECT_ID`: Your **Project ID**.
 
 ### Step 3: Install Dependencies
 
@@ -158,6 +166,18 @@ This runs the local server on `http://localhost:3000/`.
 
 - The client web app is served at `http://localhost:3000/app/` (recommended for testing login/sessions).
 - The API endpoints are served at `http://localhost:3000/server/ai-cios/`.
+
+### Step 5: Seed Mock Reference Data
+
+To populate your database tables with the official Karnataka Police Department 10-case mock reference set, trigger the seed endpoint:
+
+```bash
+curl -X POST http://localhost:3000/server/ai-cios/system/seed-demo-data
+```
+
+> [!NOTE]
+> * **Auto-Seeded Officers**: Officer/Employee profiles are automatically created when you log in or access the login page.
+> * **Seeding Skip Logic**: Seeding will skip if data already exists in the database. To force a clean reseed, restart the emulator server (resets the local in-memory fallback store) or manually empty the `firs` table in the Catalyst Data Store Console.
 
 For active UI development with Hot Module Replacement (HMR):
 

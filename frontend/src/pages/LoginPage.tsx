@@ -2,11 +2,11 @@ import { useState } from 'react';
 import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
-import { useAuth } from '../store/AuthContext';
+import { useAuth, type UserRole } from '../store/AuthContext';
 
 export function LoginPage() {
   const navigate = useNavigate();
-  const { loginWithGoogle, loginWithMockCredentials, user, loading } = useAuth();
+  const { loginWithGoogle, loginWithMockCredentials, loginWithProfile, user, loading } = useAuth();
   
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -38,7 +38,7 @@ export function LoginPage() {
     );
   }
 
-  const handleManualLogin = (e: React.FormEvent) => {
+  const handleManualLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!username.trim()) {
       setError('Please enter a username.');
@@ -46,18 +46,55 @@ export function LoginPage() {
     }
     setIsSubmitting(true);
     setError('');
-    
-    // Assign role based on username content for quick role testing
-    let role: any = 'investigator';
+
+    try {
+      // Call the real backend login endpoint
+      const loginRes = await fetch('/server/ai-cios/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ username: username.trim(), password }),
+      });
+
+      if (loginRes.ok) {
+        // Fetch the full officer profile from the database
+        const profileRes = await fetch('/server/ai-cios/auth/me', {
+          credentials: 'include',
+        });
+        if (profileRes.ok) {
+          const profile = await profileRes.json();
+          loginWithProfile({
+            id: profile.id || String(profile.ROWID) || 'db-user',
+            name: profile.name || profile.username,
+            username: profile.username,
+            email: profile.email || profile.username,
+            role: (profile.role?.toLowerCase() as UserRole) || 'investigator',
+            district: profile.district || 'Bengaluru',
+          });
+          return;
+        }
+      } else {
+        const err = await loginRes.json().catch(() => ({}));
+        // If backend reachable but credentials invalid, show error
+        if (loginRes.status === 401) {
+          setError(err.error || 'Invalid username or password.');
+          return;
+        }
+        // Backend error — fall through to mock mode below
+        console.warn('Backend login failed with status', loginRes.status, '— falling back to mock mode.');
+      }
+    } catch (networkError) {
+      // Backend unreachable — fall back to mock mode
+      console.warn('Backend unreachable, falling back to mock credentials:', networkError);
+    }
+
+    // Fallback: derive role from username and use mock credentials
+    let role: UserRole = 'investigator';
     const lowUser = username.toLowerCase();
     if (lowUser.includes('analyst')) role = 'analyst';
     else if (lowUser.includes('supervisor')) role = 'supervisor';
     else if (lowUser.includes('admin')) role = 'administrator';
-    
-    setTimeout(() => {
-      loginWithMockCredentials(username, role);
-      setIsSubmitting(false);
-    }, 500);
+    loginWithMockCredentials(username, role);
   };
 
   return (

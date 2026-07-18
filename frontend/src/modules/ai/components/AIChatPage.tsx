@@ -176,8 +176,8 @@ export function AIChatPage() {
             <RelatedCases cases={activeResponse.relatedCases} />
           </div>
 
-          {/* Bottom Panel: Sidebar thread list */}
-          <div className="flex-1 min-h-0 border-t border-white/5 pt-3">
+          {/* Bottom Panel: Sidebar thread list — fits content, max 50% of column */}
+          <div className="shrink-0 max-h-[50%] overflow-y-auto border-t border-white/5 pt-3 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
             <ConversationSidebar
               onSelectThread={setSelectedThreadId}
               selectedThreadId={selectedThreadId}

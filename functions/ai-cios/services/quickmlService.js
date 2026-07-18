@@ -44,6 +44,7 @@ async function chatWithGLM(req, messages) {
   const maxAttempts = 3;
   try {
     while (attempt < maxAttempts) {
+      attempt++;
       try {
         response = await fetch(url, {
           method: 'POST',
@@ -65,7 +66,7 @@ async function chatWithGLM(req, messages) {
         });
         break; // success
       } catch (err) {
-        if (err.name === 'AbortError' && attempt + 1 < maxAttempts) {
+        if (err.name === 'AbortError' && attempt < maxAttempts) {
           // Reset the controller and timeout for the retry
           controller = new AbortController();
           clearTimeout(timeout);
@@ -78,10 +79,13 @@ async function chatWithGLM(req, messages) {
           throw err;
         }
       }
-      attempt++;
     }
   } finally {
     clearTimeout(timeout);
+  }
+
+  if (!response) {
+    throw new Error('QuickML request failed: no response received after all retry attempts');
   }
 
   if (!response.ok) {
@@ -91,8 +95,6 @@ async function chatWithGLM(req, messages) {
 
   const result = await response.json();
   
-  console.log('[DEBUG] QuickML Raw Response:', JSON.stringify(result));
-
   function cleanReasoning(content) {
     if (typeof content !== 'string') return content;
     let clean = content;

@@ -85,7 +85,7 @@ router.post('/generate', async (req, res) => {
       reportId: fileId,
       reportType: type,
       officer: officer || 'Investigator',
-      timestamp: new Date().toISOString(),
+      generatedAt: new Date().toISOString(),
       downloadUrl: `/api/catalyst/reports/download/${fileId}`
     }).catch(err => console.error('Failed to save history', err));
     

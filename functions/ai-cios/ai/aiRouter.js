@@ -24,18 +24,47 @@ router.post('/chat', async (req, res) => {
     const { query, messages = [], context = {}, language = 'en' } = req.body;
     const lowerQuery = query ? query.toLowerCase() : '';
 
-    // Intent Detection
-    const isBurglary = lowerQuery.includes('burglary') || lowerQuery.includes('robbery') || lowerQuery.includes('theft');
-    const isCyber = lowerQuery.includes('cyber') || lowerQuery.includes('fraud');
-    const isRepeat = lowerQuery.includes('repeat') || lowerQuery.includes('offender');
-    
-    let crime = isBurglary ? 'Robbery' : isCyber ? 'Fraud' : context.crime;
+    // Intent Detection — map keywords to actual crimeCategory values in the DB
+    const CRIME_MAP = {
+      burglary: 'Burglary',
+      robbery: 'Burglary',
+      theft: 'Burglary',
+      cyber: 'Cybercrime',
+      hacking: 'Cybercrime',
+      phishing: 'Cybercrime',
+      fraud: 'Fraud',
+      cheating: 'Fraud',
+      forgery: 'Fraud',
+      drug: 'Drug Trafficking',
+      narcotic: 'Drug Trafficking',
+      ndps: 'Drug Trafficking',
+      riot: 'Rioting',
+      rioting: 'Rioting',
+      extortion: 'Extortion',
+      blackmail: 'Extortion',
+      assault: 'Assault',
+      hurt: 'Assault',
+    };
+
+    let crime = context.crime;
+    for (const [keyword, category] of Object.entries(CRIME_MAP)) {
+      if (lowerQuery.includes(keyword)) {
+        crime = category;
+        break;
+      }
+    }
     
     let district = lowerQuery.includes('mysuru') ? 'Mysuru'
                  : lowerQuery.includes('bengaluru') ? 'Bengaluru'
                  : lowerQuery.includes('mangaluru') ? 'Mangaluru'
+                 : lowerQuery.includes('dharwad') ? 'Dharwad'
+                 : lowerQuery.includes('belagavi') ? 'Belagavi'
+                 : lowerQuery.includes('kalaburagi') ? 'Kalaburagi'
+                 : lowerQuery.includes('dakshina kannada') ? 'Dakshina Kannada'
                  : lowerQuery.includes('hubballi') ? 'Hubballi-Dharwad'
                  : context.district;
+
+    const isRepeat = lowerQuery.includes('repeat') || lowerQuery.includes('offender');
 
     const status = lowerQuery.includes('solved') || lowerQuery.includes('closed') ? 'Closed'
                  : lowerQuery.includes('pending') || lowerQuery.includes('unresolved') || lowerQuery.includes('open') ? 'Open'

@@ -15,11 +15,23 @@ interface AuthContextValue {
   user: AuthUser | null;
   loading: boolean;
   loginWithGoogle: () => void;
+  loginWithProfile: (profile: AuthUser) => void;
   logout: () => void;
   loginWithMockCredentials: (username: string, role: UserRole) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
+
+/** Reads the mock_user cookie set during dev login and returns the parsed user, or null. */
+function parseMockUserCookie(): AuthUser | null {
+  const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
+  if (!mockCookie) return null;
+  try {
+    return JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
+  } catch {
+    return null;
+  }
+}
 
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(null);
@@ -87,17 +99,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
           }
         } else {
           // Fallback to Mock User from cookie if Catalyst session is not active (development only)
-          const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
-          if (mockCookie) {
-            try {
-              const mockUser = JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
-              setUser(mockUser);
-            } catch (e) {
-              setUser(null);
-            }
-          } else {
-            setUser(null);
-          }
+          setUser(parseMockUserCookie());
         }
       } catch (error: any) {
         // Catalyst Web SDK throws a network error (code 700 / net-issue) when there is no active session.
@@ -108,17 +110,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
 
         // Check for mock user even on network error
-        const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
-        if (mockCookie) {
-          try {
-            const mockUser = JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
-            setUser(mockUser);
-          } catch (e) {
-            setUser(null);
-          }
-        } else {
-          setUser(null);
-        }
+        setUser(parseMockUserCookie());
       } finally {
         setLoading(false);
       }
@@ -131,6 +123,9 @@ export function AuthProvider({ children }: PropsWithChildren) {
     () => ({
       user,
       loading,
+      loginWithProfile: (profile: AuthUser) => {
+        setUser(profile);
+      },
       loginWithGoogle: () => {
         const catalyst = (window as any).catalyst;
         if (!catalyst) {
@@ -232,8 +227,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
         }
       },
       loginWithMockCredentials: (username: string, role: UserRole) => {
-        let displayName = username.split('@')[0].replace('.', ' ');
-        displayName = displayName.charAt(0).toUpperCase() + displayName.slice(1);
+        let displayName = username.split('@')[0]
+          .split('.')
+          .map(part => part.charAt(0).toUpperCase() + part.slice(1))
+          .join('. ');
         if (username.toLowerCase() === 'officer') displayName = 'Officer User';
         else if (username.toLowerCase() === 'admin') displayName = 'Admin User';
         else if (username.toLowerCase() === 'analyst') displayName = 'Analyst User';

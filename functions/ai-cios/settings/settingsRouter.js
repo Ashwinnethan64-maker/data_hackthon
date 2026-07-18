@@ -2,9 +2,8 @@ const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
 
-// In a real Catalyst environment, you would use Catalyst Profile or a specific users table.
-// Here we mock with predefined tables for the hackathon context: 'users', 'audit_logs', 'sessions'
-const USERS_TABLE = 'users';
+// Predefined tables for the hackathon context: 'officers', 'audit_logs', 'sessions'
+const USERS_TABLE = 'officers';
 const AUDIT_TABLE = 'audit_logs';
 
 // ------------------------------------------------------------------
@@ -14,20 +13,20 @@ const AUDIT_TABLE = 'audit_logs';
 // GET profile
 router.get('/profile', async (req, res) => {
   try {
-    const userEmail = req.user?.email || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
     const users = await dbService.getAllRows(req, USERS_TABLE).catch(() => []);
-    let user = users.find(u => u.email === userEmail);
+    let user = users.find(u => u.username === userEmail || u.email === userEmail);
     if (!user) {
       user = {
-        name: 'Admin Officer',
+        name: req.user?.name || 'Admin Officer',
         badgeNumber: 'KA-9912',
-        role: 'Administrator',
-        policeStation: 'Central Station',
-        district: 'Bengaluru',
+        role: req.user?.role || 'Administrator',
+        policeStation: req.user?.policeStation || 'Central Station',
+        district: req.user?.district || 'Bengaluru',
         email: userEmail,
         phone: '+91 9876543210',
         department: 'Crime Branch',
-        joiningDate: '2015-06-12',
+        joiningDate: '2015-06-12 00:00:00',
         status: 'Active'
       };
     }
@@ -40,20 +39,53 @@ router.get('/profile', async (req, res) => {
 // PUT profile
 router.put('/profile', async (req, res) => {
   try {
-    const userEmail = req.user?.email || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
     
-    // In a real app we'd update the specific ROWID in USERS_TABLE
-    // Here we'll simulate success and log to audit
+    // Find the record in officers table
+    const users = await dbService.getAllRows(req, USERS_TABLE).catch(() => []);
+    let user = users.find(u => u.username === userEmail || u.email === userEmail);
+    
+    let updatedProfile;
+    if (user) {
+      const updateData = {
+        ROWID: user.ROWID || user.id,
+        name: req.body.name || user.name,
+        badgeNumber: req.body.badgeNumber || user.badgeNumber || 'KA-' + Math.floor(1000 + Math.random() * 9000),
+        phone: req.body.phone || user.phone || '',
+        department: req.body.department || user.department || 'Crime Branch',
+        policeStation: req.body.policeStation || user.policeStation || 'Central Station',
+        district: req.body.district || user.district || 'Bengaluru',
+        email: req.body.email || user.email || userEmail
+      };
+      updatedProfile = await dbService.updateRow(req, USERS_TABLE, updateData);
+    } else {
+      // If the user doesn't exist yet, insert a new record
+      const newRecord = {
+        username: userEmail,
+        email: userEmail,
+        name: req.body.name || req.user?.name || 'Officer User',
+        badgeNumber: req.body.badgeNumber || 'KA-' + Math.floor(1000 + Math.random() * 9000),
+        role: req.user?.role || 'investigator',
+        policeStation: req.body.policeStation || 'Central Station',
+        district: req.body.district || 'Bengaluru',
+        phone: req.body.phone || '',
+        department: req.body.department || 'Crime Branch',
+        joiningDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
+        status: 'Active'
+      };
+      updatedProfile = await dbService.insertRow(req, USERS_TABLE, newRecord);
+    }
     
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'PROFILE_UPDATE',
-      user: userEmail,
-      timestamp: new Date().toISOString(),
-      details: 'User updated their profile details.'
+      actor: userEmail,
+      loggedAt: new Date().toISOString(),
+      details: `User updated profile details for ${userEmail}.`
     }).catch(() => {});
 
-    res.json({ success: true, message: 'Profile updated successfully', profile: req.body });
+    res.json({ success: true, message: 'Profile updated successfully', profile: updatedProfile });
   } catch (error) {
+    console.error('Failed to update profile:', error);
     res.status(500).json({ error: 'Failed to update profile' });
   }
 });
@@ -84,12 +116,12 @@ router.get('/preferences', async (req, res) => {
 // PUT preferences
 router.put('/preferences', async (req, res) => {
   try {
-    const userEmail = req.user?.email || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
     
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'PREFERENCES_UPDATE',
-      user: userEmail,
-      timestamp: new Date().toISOString(),
+      actor: userEmail,
+      loggedAt: new Date().toISOString(),
       details: 'User updated application preferences.'
     }).catch(() => {});
 
@@ -127,11 +159,11 @@ router.put('/security', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    const userEmail = req.user?.email || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'SECURITY_UPDATE',
-      user: userEmail,
-      timestamp: new Date().toISOString(),
+      actor: userEmail,
+      loggedAt: new Date().toISOString(),
       details: 'User changed their password.'
     }).catch(() => {});
 
@@ -160,11 +192,11 @@ router.get('/sessions', async (req, res) => {
 // DELETE session
 router.delete('/sessions/:id', async (req, res) => {
   try {
-    const userEmail = req.user?.email || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'SESSION_TERMINATED',
-      user: userEmail,
-      timestamp: new Date().toISOString(),
+      actor: userEmail,
+      loggedAt: new Date().toISOString(),
       details: `Terminated session ${req.params.id}`
     }).catch(() => {});
 
@@ -182,15 +214,25 @@ router.delete('/sessions/:id', async (req, res) => {
 router.get('/audit-logs', async (req, res) => {
   try {
     let logs = await dbService.getAllRows(req, AUDIT_TABLE).catch(() => []);
-    if (logs.length === 0) {
-      logs = [
+    
+    // Normalize DB rows (actor -> user, loggedAt -> timestamp)
+    let normalizedLogs = logs.map(log => ({
+      ROWID: log.ROWID || log.id,
+      action: log.action,
+      user: log.actor || log.user || 'Unknown',
+      timestamp: log.loggedAt || log.timestamp || new Date().toISOString(),
+      details: log.details
+    }));
+
+    if (normalizedLogs.length === 0) {
+      normalizedLogs = [
         { ROWID: '1', action: 'LOGIN', user: 'admin@police.karnataka.gov.in', timestamp: new Date().toISOString(), details: 'Successful login' },
         { ROWID: '2', action: 'REPORT_GENERATION', user: 'admin@police.karnataka.gov.in', timestamp: new Date(Date.now() - 3600000).toISOString(), details: 'Generated Crime Summary Report' }
       ];
     }
     // Sort descending by timestamp
-    logs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-    res.json(logs);
+    normalizedLogs.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+    res.json(normalizedLogs);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch audit logs' });
   }

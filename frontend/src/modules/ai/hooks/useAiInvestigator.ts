@@ -4,12 +4,12 @@ import { generateAiResponse } from '../services/aiService';
 import type { AiConversationThread, AiMessage, AiResponse, AiContext, Language } from '../types';
 
 const defaultSuggestedPrompts = [
-  'Show burglary cases in Bengaluru',
-  'Find repeat offenders',
-  'Summarize FIR',
-  'Show crime hotspots',
-  'Explain criminal network',
-  'Find similar cases',
+  'Show cybercrime cases in Bengaluru Urban',
+  'List open cases in Mysuru district',
+  'Show critical and high-priority FIRs',
+  'Find cases with pending arrests',
+  'Summarize drug trafficking cases',
+  'Find extortion cases in Bengaluru',
   'Generate investigation report',
 ];
 
@@ -78,7 +78,7 @@ export function useAiInvestigator() {
 
   const [query, setQuery] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
-  // activeResponse will be derived from the selected thread's mock response
+  const [activeResponse, setActiveResponse] = useState<AiResponse>(mockResponses[selectedThreadId] ?? FALLBACK_RESPONSE);
   const abortRef = useRef<AbortController | null>(null);
 
   // When the selected thread changes, clear the input field and show the latest response for that thread
@@ -156,8 +156,7 @@ export function useAiInvestigator() {
       language,
     };
 
-    // Determine existing messages for the thread. If we just created the thread, include the system welcome message.
-    // Gather existing messages for the thread. If this is a newly created thread, ensure the system welcome message is included.
+    // Gather existing messages for the thread (include system welcome if new).
     const threadMessages =
       messagesByThread[currentThreadId] && messagesByThread[currentThreadId].length > 0
         ? messagesByThread[currentThreadId]
@@ -240,8 +239,7 @@ export function useAiInvestigator() {
     }, 3000);
   };
 
-  // Set the initial active response to match the selected thread's mock response
-  const [activeResponse, setActiveResponse] = useState<AiResponse>(mockResponses[selectedThreadId] ?? FALLBACK_RESPONSE);
+
 
   return {
     threads,

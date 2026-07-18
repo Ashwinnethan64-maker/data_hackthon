@@ -16,7 +16,7 @@ export function ConversationSidebar({
   onSelectThread,
 }: ConversationSidebarProps) {
   return (
-    <Card className="p-4 space-y-4 h-full flex flex-col">
+    <Card className="p-4 space-y-4">
       <div className="flex items-center justify-between border-b border-white/5 pb-2">
         <div className="flex items-center gap-2 text-sm font-semibold text-white">
           <History className="h-4 w-4 text-cyan" />
@@ -24,7 +24,7 @@ export function ConversationSidebar({
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-3 pr-1 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+      <div className="space-y-3 pr-1">
         {/* Threads */}
         <div className="space-y-1.5">
           <p className="text-[10px] font-bold uppercase tracking-wider text-slate-400">Recent Conversations</p>
