@@ -13,20 +13,20 @@ const AUDIT_TABLE = 'audit_logs';
 // GET profile
 router.get('/profile', async (req, res) => {
   try {
-    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || req.headers['x-mock-email'] || 'admin@police.karnataka.gov.in';
     const users = await dbService.getAllRows(req, USERS_TABLE).catch(() => []);
     let user = users.find(u => u.username === userEmail || u.email === userEmail);
     if (!user) {
       user = {
-        name: req.user?.name || 'Admin Officer',
-        badgeNumber: 'KA-9912',
-        role: req.user?.role || 'Administrator',
-        policeStation: req.user?.policeStation || 'Central Station',
-        district: req.user?.district || 'Bengaluru',
+        name: req.user?.name || '',
+        badgeNumber: '',
+        role: req.user?.role || 'investigator',
+        policeStation: req.user?.policeStation || '',
+        district: req.user?.district || '',
         email: userEmail,
-        phone: '+91 9876543210',
-        department: 'Crime Branch',
-        joiningDate: '2015-06-12 00:00:00',
+        phone: '',
+        department: '',
+        joiningDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
         status: 'Active'
       };
     }
@@ -39,7 +39,7 @@ router.get('/profile', async (req, res) => {
 // PUT profile
 router.put('/profile', async (req, res) => {
   try {
-    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || req.headers['x-mock-email'] || 'admin@police.karnataka.gov.in';
     
     // Find the record in officers table
     const users = await dbService.getAllRows(req, USERS_TABLE).catch(() => []);
@@ -63,13 +63,13 @@ router.put('/profile', async (req, res) => {
       const newRecord = {
         username: userEmail,
         email: userEmail,
-        name: req.body.name || req.user?.name || 'Officer User',
-        badgeNumber: req.body.badgeNumber || 'KA-' + Math.floor(1000 + Math.random() * 9000),
+        name: req.body.name || req.user?.name || '',
+        badgeNumber: req.body.badgeNumber || '',
         role: req.user?.role || 'investigator',
-        policeStation: req.body.policeStation || 'Central Station',
-        district: req.body.district || 'Bengaluru',
+        policeStation: req.body.policeStation || '',
+        district: req.body.district || '',
         phone: req.body.phone || '',
-        department: req.body.department || 'Crime Branch',
+        department: req.body.department || '',
         joiningDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
         status: 'Active'
       };
@@ -116,7 +116,7 @@ router.get('/preferences', async (req, res) => {
 // PUT preferences
 router.put('/preferences', async (req, res) => {
   try {
-    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || req.headers['x-mock-email'] || 'admin@police.karnataka.gov.in';
     
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'PREFERENCES_UPDATE',
@@ -159,7 +159,7 @@ router.put('/security', async (req, res) => {
       return res.status(400).json({ error: 'Missing required fields' });
     }
     
-    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || req.headers['x-mock-email'] || 'admin@police.karnataka.gov.in';
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'SECURITY_UPDATE',
       actor: userEmail,
@@ -192,7 +192,7 @@ router.get('/sessions', async (req, res) => {
 // DELETE session
 router.delete('/sessions/:id', async (req, res) => {
   try {
-    const userEmail = req.user?.username || 'admin@police.karnataka.gov.in';
+    const userEmail = req.user?.username || req.headers['x-mock-email'] || 'admin@police.karnataka.gov.in';
     await dbService.insertRow(req, AUDIT_TABLE, {
       action: 'SESSION_TERMINATED',
       actor: userEmail,

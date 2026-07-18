@@ -1,13 +1,18 @@
 import { Bell, Clock3, Search, Sparkles, Menu } from 'lucide-react';
 import dayjs from 'dayjs';
 import { Button } from './Button';
-
+import { useState } from 'react';
+import { Modal } from './Modal';
+import { Link } from 'react-router-dom';
+import { ArrowUpRight } from 'lucide-react';
 interface NavbarProps {
   onMenuClick: () => void;
   onTabletCollapseToggle?: () => void;
 }
 
 export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
+  const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
+
   return (
     <header className="sticky top-0 z-20 border-b border-white/10 bg-navy/85 px-3 py-3 md:px-4 md:py-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex flex-row items-center justify-between gap-2 md:gap-4 w-full">
@@ -45,17 +50,16 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
             />
           </label>
 
-          <Button variant="secondary" className="hidden md:flex h-12 px-4 shrink-0">
+          <Button 
+            variant="secondary" 
+            className="hidden md:flex h-12 px-4 shrink-0"
+            onClick={() => setIsQuickActionsOpen(true)}
+          >
             <Sparkles className="h-4 w-4 text-cyan" />
             Quick Actions
           </Button>
 
-          <button 
-            aria-label="Notifications"
-            className="glass-panel flex h-[44px] w-[44px] md:h-12 md:w-12 shrink-0 items-center justify-center rounded-xl md:rounded-2xl text-slate-200 transition hover:border-cyan/40 hover:text-white"
-          >
-            <Bell className="h-4 w-4" />
-          </button>
+
 
           <div className="glass-panel hidden xl:flex h-12 shrink-0 items-center gap-2 rounded-2xl px-4 text-sm text-slate-300">
             <Clock3 className="h-4 w-4 text-cyan" />
@@ -64,6 +68,31 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
         </div>
 
       </div>
+
+      <Modal 
+        isOpen={isQuickActionsOpen} 
+        onClose={() => setIsQuickActionsOpen(false)}
+        title="Quick Actions"
+      >
+        <div className="grid gap-3">
+          {[
+            { name: 'Ask AI', path: '/ai' },
+            { name: 'Search FIR', path: '/cases' },
+            { name: 'Open Network', path: '/network' },
+            { name: 'Generate Report', path: '/reports' }
+          ].map((action) => (
+            <Link
+              key={action.name}
+              to={action.path}
+              onClick={() => setIsQuickActionsOpen(false)}
+              className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-slate-200 transition hover:border-cyan/40 hover:bg-white/10"
+            >
+              <span>{action.name}</span>
+              <ArrowUpRight className="h-4 w-4 text-slate-400" />
+            </Link>
+          ))}
+        </div>
+      </Modal>
     </header>
   );
 }

@@ -3,7 +3,7 @@ import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useQuery } from '@tanstack/react-query';
 import { api } from '../services/api';
-
+import { Link } from 'react-router-dom';
 const alerts = [
   '3 burglary clusters detected in Bengaluru South.',
   'Cybercrime reports increased 17% over the last 30 days.',
@@ -205,15 +205,20 @@ export function DashboardPage() {
             </div>
 
             <div className="mt-5 grid gap-3">
-              {['Ask AI', 'Search FIR', 'Open Network', 'Generate Report'].map((action) => (
-                <button
-                  key={action}
+              {[
+                { name: 'Ask AI', path: '/ai' },
+                { name: 'Search FIR', path: '/cases' },
+                { name: 'Open Network', path: '/network' },
+                { name: 'Generate Report', path: '/reports' }
+              ].map((action) => (
+                <Link
+                  key={action.name}
+                  to={action.path}
                   className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-left text-sm text-slate-200 transition hover:border-cyan/40 hover:bg-white/10"
-                  type="button"
                 >
-                  <span>{action}</span>
+                  <span>{action.name}</span>
                   <ArrowUpRight className="h-4 w-4 text-slate-400" />
-                </button>
+                </Link>
               ))}
             </div>
           </Card>

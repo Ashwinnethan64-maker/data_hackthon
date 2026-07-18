@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react';
 import { Card } from '../components/Card';
 import { Button } from '../components/Button';
 import { apiRequest } from '../utils/api';
-import { User, Shield, Bell, Loader2, Save } from 'lucide-react';
+import { User, Shield, Loader2, Save } from 'lucide-react';
+import { useAuth } from '../store/AuthContext';
 
 export function SettingsPage() {
+  const { user, loginWithProfile } = useAuth();
   const [profile, setProfile] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -13,10 +15,27 @@ export function SettingsPage() {
   const fetchProfile = async () => {
     setLoading(true);
     try {
-      const data = await apiRequest('/settings/profile');
-      setProfile(data);
+      const data = await apiRequest('/settings/profile', {
+        headers: { 'x-mock-email': user?.email || user?.username || '' }
+      });
+      // Merge backend profile with the authenticated user's details from context
+      setProfile({
+        ...data,
+        name: user?.name || data.name,
+        email: user?.email || user?.username || data.email,
+      });
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to fetch profile' });
+      // Fallback to AuthContext user if API fails
+      setProfile({
+        name: user?.name,
+        email: user?.email || user?.username,
+        badgeNumber: '',
+        department: '',
+        policeStation: '',
+        district: user?.district || 'Bengaluru',
+        phone: ''
+      });
     } finally {
       setLoading(false);
     }
@@ -32,9 +51,20 @@ export function SettingsPage() {
     try {
       await apiRequest('/settings/profile', {
         method: 'PUT',
+        headers: { 'x-mock-email': user?.email || user?.username || '' },
         body: JSON.stringify(profile),
       });
       setMessage({ type: 'success', text: 'Profile updated successfully' });
+      
+      // Update global context
+      if (user) {
+        loginWithProfile({
+          ...user,
+          name: profile.name,
+          email: profile.email,
+          district: profile.district
+        });
+      }
     } catch (err: any) {
       setMessage({ type: 'error', text: err.message || 'Failed to update profile' });
     } finally {
@@ -166,28 +196,7 @@ export function SettingsPage() {
             <Button variant="secondary" className="w-full">View Active Sessions</Button>
           </Card>
 
-          <Card>
-            <div className="flex items-center gap-3 mb-4">
-              <div className="p-2 rounded-lg bg-orange-500/20 text-orange-400">
-                <Bell className="w-5 h-5" />
-              </div>
-              <h2 className="text-lg font-semibold text-white">Notifications</h2>
-            </div>
-            <div className="space-y-3">
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-slate-900/50 text-cyan focus:ring-cyan focus:ring-offset-navy" defaultChecked />
-                <span className="text-sm text-slate-300">Email Alerts</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-slate-900/50 text-cyan focus:ring-cyan focus:ring-offset-navy" defaultChecked />
-                <span className="text-sm text-slate-300">Crime Hotspot Alerts</span>
-              </label>
-              <label className="flex items-center gap-3 cursor-pointer">
-                <input type="checkbox" className="w-4 h-4 rounded border-white/10 bg-slate-900/50 text-cyan focus:ring-cyan focus:ring-offset-navy" />
-                <span className="text-sm text-slate-300">SMS Notifications</span>
-              </label>
-            </div>
-          </Card>
+
         </div>
       </div>
     </div>
