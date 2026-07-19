@@ -40,14 +40,14 @@ export function Sidebar({ isOpen, onClose, isTabletCollapsed = false }: SidebarP
       {/* Mobile Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm md:hidden"
+          className="fixed inset-0 z-[1040] bg-navy/80 backdrop-blur-sm md:hidden"
           onClick={onClose}
         />
       )}
       
       {/* Sidebar Content */}
       <aside 
-        className={`fixed inset-y-0 left-0 z-50 flex flex-col border-r border-white/10 bg-navy/95 py-5 text-slate-200 shadow-2xl transition-all duration-300 ease-in-out md:static md:flex md:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[1050] flex flex-col border-r border-white/10 bg-navy/95 py-5 text-slate-200 shadow-2xl transition-all duration-300 ease-in-out md:static md:flex md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         } ${isTabletCollapsed ? 'md:w-[88px] md:px-2' : 'w-[280px] px-4'} lg:w-[280px] lg:px-4`}
       >

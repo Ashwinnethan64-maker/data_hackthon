@@ -11,7 +11,7 @@ export function SharedModal({ isOpen, onClose, title, children }: SharedModalPro
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-50" onClick={onClose}>
+    <div className="fixed inset-0 bg-black/60 flex items-center justify-center z-[2000]" onClick={onClose}>
       <div className="bg-gray-900 rounded-lg w-11/12 max-w-md p-4 relative max-h-[80vh]" onClick={(e) => e.stopPropagation()}>
         <div className="flex justify-between items-center mb-2">
           <h3 className="text-sm font-semibold text-white">{title}</h3>

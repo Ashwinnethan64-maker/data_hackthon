@@ -59,7 +59,7 @@ export function CaseDrawer({
       };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 lg:p-0 lg:justify-end">
+    <div className="fixed inset-0 z-[1050] flex items-center justify-center p-4 lg:p-0 lg:justify-end">
       {/* Overlay Backdrop */}
       <motion.div
         initial={{ opacity: 0 }}

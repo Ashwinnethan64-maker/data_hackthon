@@ -26,14 +26,14 @@ export function CaseFilters({ filters, setFilters, resetFilters, isOpen, onClose
       {/* Mobile Backdrop */}
       {isOpen && (
         <div 
-          className="fixed inset-0 z-30 bg-navy/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[1040] bg-navy/80 backdrop-blur-sm lg:hidden"
           onClick={onClose}
         />
       )}
       
       {/* Filters Panel */}
       <div 
-        className={`fixed inset-y-0 left-0 z-40 w-80 max-w-[85vw] border-r border-white/10 bg-slate-900/95 p-5 space-y-6 overflow-y-auto transition-transform duration-300 ease-in-out lg:static lg:block lg:shrink-0 lg:rounded-2xl lg:border lg:bg-slate-900/60 lg:max-h-[85vh] lg:translate-x-0 ${
+        className={`fixed inset-y-0 left-0 z-[1050] w-80 max-w-[85vw] border-r border-white/10 bg-slate-900/95 p-5 space-y-6 overflow-y-auto transition-transform duration-300 ease-in-out lg:static lg:block lg:shrink-0 lg:rounded-2xl lg:border lg:bg-slate-900/60 lg:max-h-[85vh] lg:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full lg:hidden'
         }`}
       >

@@ -85,14 +85,14 @@ function NetworkPageInner() {
       {/* Mobile Backdrop */}
       {isFiltersOpen && (
         <div
-          className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-[1040] bg-navy/80 backdrop-blur-sm lg:hidden"
           onClick={() => setIsFiltersOpen(false)}
         />
       )}
 
       {/* Left sidebar */}
       <div
-        className={`flex-shrink-0 transition-all duration-300 z-50 bg-navy ${
+        className={`flex-shrink-0 transition-all duration-300 z-[1050] bg-navy ${
           isFiltersOpen ? 'fixed inset-y-0 left-0 w-64 border-r border-white/10 lg:static' : 'fixed -left-64 lg:static w-0 overflow-hidden'
         }`}
         style={{ width: isFiltersOpen ? 256 : 0 }}

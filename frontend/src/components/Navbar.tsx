@@ -14,7 +14,7 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
 
   return (
-    <header className="sticky top-0 z-20 border-b border-white/10 bg-navy/85 px-3 py-3 md:px-4 md:py-4 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-[1020] border-b border-white/10 bg-navy/85 px-3 py-3 md:px-4 md:py-4 backdrop-blur-xl sm:px-6 lg:px-8">
       <div className="flex flex-row items-center justify-between gap-2 md:gap-4 w-full">
         
         {/* Branding & Menu Toggle */}

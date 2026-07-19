@@ -55,7 +55,7 @@ export function MapToolbar({
   const clearAll = () => onFiltersChange({ districts: [], crimeCategories: [], riskLevels: [], statuses: [] });
 
   return (
-    <div className="relative z-[1000]">
+    <div className="relative z-[1010]">
       {/* Main toolbar row */}
       <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 bg-slate-950/90 border-b border-slate-700/40 backdrop-blur-xl">
         {/* Search */}
