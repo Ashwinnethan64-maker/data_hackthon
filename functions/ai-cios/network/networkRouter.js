@@ -23,7 +23,7 @@ function buildGraph(firs) {
 
   const addNode = (id, data) => {
     if (!nodesMap.has(id)) {
-      nodesMap.set(id, { id, position: { x: 0, y: 0 }, data });
+      nodesMap.set(id, { id, type: 'entityNode', position: { x: 0, y: 0 }, data });
     } else {
       // update firCount
       const existing = nodesMap.get(id);
@@ -132,17 +132,146 @@ function buildGraph(firs) {
     }
   });
 
-  // Calculate coordinates (simple circle layout for unpositioned)
+  // ── Semantic Cluster Layout: one cluster per FIR case ────────────────────────
   const nodes = Array.from(nodesMap.values());
-  nodes.forEach((n, i) => {
-    n.position = {
-      x: 400 + 400 * Math.cos((2 * Math.PI * i) / nodes.length),
-      y: 400 + 400 * Math.sin((2 * Math.PI * i) / nodes.length)
+
+  // Step 1: Build a map of nodeId -> list of FIR IDs it belongs to
+  const nodeToFirs = {}; // nodeId -> Set of firIds
+  edges.forEach(e => {
+    const srcType = nodesMap.get(e.source)?.data.entityType;
+    const tgtType = nodesMap.get(e.target)?.data.entityType;
+    if (srcType === 'FIR') {
+      if (!nodeToFirs[e.target]) nodeToFirs[e.target] = new Set();
+      nodeToFirs[e.target].add(e.source);
+    }
+    if (tgtType === 'FIR') {
+      if (!nodeToFirs[e.source]) nodeToFirs[e.source] = new Set();
+      nodeToFirs[e.source].add(e.target);
+    }
+  });
+
+  // Step 2: For each FIR, collect its member nodes (directly connected, single-FIR)
+  const firNodes = nodes.filter(n => n.data.entityType === 'FIR');
+  const numFirs = firNodes.length;
+
+  // Grid layout for cluster centers: aim for ~4 columns
+  const COLS = Math.max(2, Math.ceil(Math.sqrt(numFirs * 1.6)));
+  const CLUSTER_W = 700;  // horizontal spacing between cluster centers
+  const CLUSTER_H = 620;  // vertical spacing between cluster centers
+  const MEMBER_RADIUS = 230; // radius of members around FIR hub
+
+  // Stagger every other row for a honeycomb-ish feel
+  const firCenters = {}; // firId -> { x, y }
+  firNodes.forEach((firNode, i) => {
+    const col = i % COLS;
+    const row = Math.floor(i / COLS);
+    const stagger = (row % 2 === 1) ? CLUSTER_W * 0.5 : 0;
+    const cx = 400 + col * CLUSTER_W + stagger;
+    const cy = 400 + row * CLUSTER_H;
+    firCenters[firNode.id] = { x: cx, y: cy };
+    firNode.position = { x: cx, y: cy };
+  });
+
+  // Step 3: For each FIR, collect single-membership members and place them radially
+  const firMembers = {}; // firId -> [nodeId, ...]
+  firNodes.forEach(f => { firMembers[f.id] = []; });
+
+  nodes.forEach(node => {
+    if (node.data.entityType === 'FIR') return;
+    const memberOf = nodeToFirs[node.id] ? Array.from(nodeToFirs[node.id]) : [];
+    if (memberOf.length === 1) {
+      firMembers[memberOf[0]].push(node.id);
+    }
+  });
+
+  // Place single-FIR members around their hub in a radial arrangement
+  // Group by entity type within the cluster for angular sectors
+  const TYPE_SECTOR = { Accused: 0, Victim: 1, Officer: 2, PoliceStation: 3, District: 4, Witness: 5, Court: 6, BankAccount: 7, Phone: 8, Vehicle: 9, Address: 10, CrimeCategory: 11, IPCSection: 12 };
+  firNodes.forEach(firNode => {
+    const memberIds = firMembers[firNode.id];
+    if (!memberIds.length) return;
+    const center = firCenters[firNode.id];
+
+    // Sort members by type sector for organized placement
+    const sorted = [...memberIds].sort((a, b) => {
+      const ta = TYPE_SECTOR[nodesMap.get(a)?.data.entityType] ?? 99;
+      const tb = TYPE_SECTOR[nodesMap.get(b)?.data.entityType] ?? 99;
+      return ta - tb;
+    });
+
+    const total = sorted.length;
+    sorted.forEach((nodeId, i) => {
+      const node = nodesMap.get(nodeId);
+      if (!node) return;
+      const angle = (2 * Math.PI * i) / total - Math.PI / 2; // start from top
+      const r = total <= 4 ? MEMBER_RADIUS * 0.75 : MEMBER_RADIUS;
+      node.position = {
+        x: center.x + r * Math.cos(angle),
+        y: center.y + r * Math.sin(angle),
+      };
+    });
+  });
+
+  // Step 4: Multi-FIR nodes (repeat offenders / shared infrastructure)
+  // Place at the centroid of all their cluster centers
+  nodes.forEach(node => {
+    if (node.data.entityType === 'FIR') return;
+    const memberOf = nodeToFirs[node.id] ? Array.from(nodeToFirs[node.id]) : [];
+    if (memberOf.length <= 1) return; // already handled above
+
+    // Average the cluster centers
+    let sumX = 0, sumY = 0;
+    memberOf.forEach(firId => {
+      const c = firCenters[firId] || { x: 600, y: 600 };
+      sumX += c.x;
+      sumY += c.y;
+    });
+    node.position = {
+      x: sumX / memberOf.length,
+      y: sumY / memberOf.length,
     };
   });
 
-  return { nodes, edges };
+  // Step 5: Orphan nodes (not connected to any FIR) — scatter below the grid
+  const maxY = Math.max(...Object.values(firCenters).map(c => c.y), 400);
+  let orphanX = 400, orphanY = maxY + 500;
+  nodes.forEach(node => {
+    if (node.data.entityType === 'FIR') return;
+    const memberOf = nodeToFirs[node.id] ? Array.from(nodeToFirs[node.id]) : [];
+    if (memberOf.length === 0) {
+      node.position = { x: orphanX, y: orphanY };
+      orphanX += 200;
+      if (orphanX > 2400) { orphanX = 400; orphanY += 200; }
+    }
+  });
+
+  // Step 6: Add cluster group background nodes (visual grouping)
+  const clusterGroupNodes = firNodes.map(firNode => {
+    const center = firCenters[firNode.id];
+    const memberCount = firMembers[firNode.id].length;
+    // Size the background ellipse based on members
+    const groupSize = 150 + Math.min(memberCount, 8) * 55;
+    return {
+      id: `cluster-bg-${firNode.id}`,
+      type: 'clusterGroup',
+      position: { x: center.x - groupSize, y: center.y - groupSize * 0.9 },
+      data: {
+        label: firNode.data.label,
+        riskLevel: firNode.data.riskLevel,
+        crimeType: firNode.data.crimeTypes?.[0] || '',
+        width: groupSize * 2,
+        height: groupSize * 1.8,
+      },
+      style: { zIndex: -1, pointerEvents: 'none' },
+      selectable: false,
+      draggable: false,
+    };
+  });
+
+  // Cluster groups go first (rendered behind entity nodes)
+  return { nodes: [...clusterGroupNodes, ...nodes], edges };
 }
+
 
 // GET the full or filtered graph
 router.get('/graph', async (req, res) => {
@@ -230,14 +359,79 @@ router.get('/search', async (req, res) => {
   }
 });
 
+const crypto = require('crypto');
+const explanationCache = new Map();
+
+function computeNetworkHash(nodes, edges) {
+  const sortedNodeIds = nodes.map(n => n.id).sort().join(',');
+  const sortedEdgeIds = edges.map(e => e.id).sort().join(',');
+  return crypto.createHash('sha256').update(`${sortedNodeIds}|${sortedEdgeIds}`).digest('hex');
+}
+
 // GET explanation
 router.get('/explanation', async (req, res) => {
   try {
     const records = await dbService.getAllRows(req, TABLE_NAME);
-    const firs = records.filter(r => r.status !== 'Inactive');
-    const { nodes } = buildGraph(firs);
+    let firs = records.filter(r => r.status !== 'Inactive' && r.status !== 'Archived');
+
+    const {
+      entityTypes,
+      crimeTypes,
+      districts,
+      policeStation,
+      dateFrom,
+      dateTo,
+      riskLevel,
+      gang,
+      repeatOffenderOnly,
+      status
+    } = req.query;
+
+    // Filter FIRs before building graph to reduce size
+    if (districts) {
+      const dArr = districts.split(',');
+      if (dArr.length > 0) firs = firs.filter(f => dArr.includes(f.district));
+    }
+    if (policeStation) {
+      firs = firs.filter(f => f.policeStation === policeStation);
+    }
+    if (crimeTypes) {
+      const cArr = crimeTypes.split(',');
+      if (cArr.length > 0) firs = firs.filter(f => cArr.includes(f.crimeCategory));
+    }
+    if (dateFrom) firs = firs.filter(f => f.incidentDate >= dateFrom);
+    if (dateTo) firs = firs.filter(f => f.incidentDate <= dateTo);
+    if (status) firs = firs.filter(f => f.status === status);
+
+    let { nodes, edges } = buildGraph(firs);
+
+    // Apply Node-level filters
+    if (entityTypes) {
+      const eArr = entityTypes.split(',');
+      if (eArr.length > 0) nodes = nodes.filter(n => eArr.includes(n.data.entityType));
+    }
+    if (riskLevel) {
+      nodes = nodes.filter(n => n.data.riskLevel === riskLevel);
+    }
+    if (gang) {
+      nodes = nodes.filter(n => n.data.gang && n.data.gang.toLowerCase().includes(gang.toLowerCase()));
+    }
+    if (repeatOffenderOnly === 'true') {
+      nodes = nodes.filter(n => n.data.isRepeatOffender === true);
+    }
+
+    // Clean up edges (only keep edges where both nodes exist)
+    const validNodeIds = new Set(nodes.map(n => n.id));
+    edges = edges.filter(e => validNodeIds.has(e.source) && validNodeIds.has(e.target));
+
+    // Calculate network hash and check cache
+    const networkHash = computeNetworkHash(nodes, edges);
+    if (explanationCache.has(networkHash)) {
+      console.log(`[Network Cache Hit] Returning cached explanation for hash: ${networkHash}`);
+      return res.json(explanationCache.get(networkHash));
+    }
+
     const repeatOffenders = nodes.filter(n => n.data.isRepeatOffender);
-    
     const quickmlService = require('../services/quickmlService');
     const prompt = `You are an AI Crime Network Analyst.
 Analyze the following criminal network composed of ${firs.length} incidents and ${nodes.length} entities (offenders, victims, locations).
@@ -285,7 +479,7 @@ Return ONLY valid JSON, no markdown blocks.`;
       };
     }
 
-    res.json({
+    const responseBody = {
       summary: aiData.summary,
       hiddenRelationships: aiData.hiddenRelationships || [],
       repeatPatterns: aiData.repeatPatterns || [],
@@ -294,7 +488,12 @@ Return ONLY valid JSON, no markdown blocks.`;
       evidence: ['Data Store FIR Records', 'AI Behavioral Profile Models'],
       confidenceScore: 89,
       investigationLeads: aiData.investigationLeads || []
-    });
+    };
+
+    // Cache the result
+    explanationCache.set(networkHash, responseBody);
+
+    res.json(responseBody);
   } catch (error) {
     console.error('Failed to fetch network explanation:', error);
     res.status(500).json({ error: 'Failed to fetch network explanation' });

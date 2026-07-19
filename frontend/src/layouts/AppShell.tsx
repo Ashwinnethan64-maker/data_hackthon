@@ -8,7 +8,10 @@ export function AppShell() {
   const [isTabletCollapsed, setIsTabletCollapsed] = useState(false);
   const location = useLocation();
 
-  const isAiPage = location.pathname.startsWith('/ai');
+  const isFullHeightPage = 
+    location.pathname.startsWith('/ai') || 
+    location.pathname === '/network' || 
+    location.pathname === '/map';
 
   return (
     <div className="h-screen bg-navy text-slate-100 overflow-hidden">
@@ -24,7 +27,7 @@ export function AppShell() {
             onMenuClick={() => setIsSidebarOpen(true)}
             onTabletCollapseToggle={() => setIsTabletCollapsed(p => !p)}
           />
-          <div className={`flex-1 flex flex-col min-h-0 ${isAiPage ? 'p-3 overflow-hidden h-[calc(100vh-4rem)]' : 'p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto'}`}>
+          <div className={`flex-1 flex flex-col min-h-0 ${isFullHeightPage ? 'p-0 overflow-hidden h-[calc(100vh-4rem)]' : 'p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto'}`}>
             <div className="mx-auto w-full max-w-[1920px] flex-1 flex flex-col min-h-0">
               <Outlet />
             </div>

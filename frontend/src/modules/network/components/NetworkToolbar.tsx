@@ -1,13 +1,20 @@
 import { useCallback } from 'react';
 import { useReactFlow } from 'reactflow';
 import {
-  Search, Filter, ZoomIn, ZoomOut, RotateCcw,
+  Filter, ZoomIn, ZoomOut, RotateCcw,
   Download, Maximize2, Brain, Layers,
 } from 'lucide-react';
+import { SearchPanel } from './SearchPanel';
+import type { NetworkNode } from '../types';
 
 interface NetworkToolbarProps {
   totalNodes: number;
   totalEdges: number;
+  nodes?: NetworkNode[];
+  searchQuery: string;
+  onSearchChange: (q: string) => void;
+  searchResults: NetworkNode[];
+  onSelectSearchResult: (id: string) => void;
   isFiltersOpen: boolean;
   onToggleFilters: () => void;
   onReset: () => void;
@@ -19,6 +26,10 @@ interface NetworkToolbarProps {
 export function NetworkToolbar({
   totalNodes,
   totalEdges,
+  searchQuery,
+  onSearchChange,
+  searchResults,
+  onSelectSearchResult,
   isFiltersOpen,
   onToggleFilters,
   onReset,
@@ -33,7 +44,6 @@ export function NetworkToolbar({
   }, [fitView]);
 
   const handleExport = useCallback(() => {
-    // Simple SVG export via querySelector
     const svgEl = document.querySelector<SVGSVGElement>('.react-flow__renderer svg');
     if (!svgEl) return;
     const serializer = new XMLSerializer();
@@ -48,99 +58,58 @@ export function NetworkToolbar({
   }, []);
 
   return (
-    <div className="flex items-center gap-2 border-b border-white/8 bg-navy/90 px-4 py-2.5 backdrop-blur-xl flex-shrink-0">
-      {/* Left: stats */}
-      <div className="flex items-center gap-3 mr-2">
-        <div className="flex items-center gap-1.5">
-          <div className="h-1.5 w-1.5 rounded-full bg-cyan animate-pulse" />
-          <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
-            {totalNodes} Nodes
-          </span>
-        </div>
-        <div className="h-3 w-px bg-white/10" />
-        <span className="text-[10px] font-semibold text-slate-400 uppercase tracking-wide">
-          {totalEdges} Edges
-        </span>
+    <div className="flex items-center gap-3 border-b border-slate-800 bg-navy/95 px-5 py-3 backdrop-blur-xl flex-shrink-0">
+      {/* Left: node/edge count — compact inline text */}
+      <div className="flex items-center gap-1.5 text-[10px] text-slate-500 font-mono mr-1 select-none flex-shrink-0">
+        <span className="text-slate-400 font-semibold">{totalNodes}</span>
+        <span>nodes</span>
+        <span className="text-slate-700">·</span>
+        <span className="text-slate-400 font-semibold">{totalEdges}</span>
+        <span>edges</span>
       </div>
 
-      <div className="h-5 w-px bg-white/10 mx-1" />
+      <div className="h-5 w-px bg-slate-800 mx-1" />
 
-      {/* Controls */}
-      <div className="flex items-center gap-1">
-        {/* Filter toggle */}
-        <ToolbarButton
-          onClick={onToggleFilters}
-          active={isFiltersOpen}
-          title="Filters"
-          icon={<Filter size={14} />}
-        />
-
-        {/* Zoom in */}
-        <ToolbarButton
-          onClick={() => zoomIn({ duration: 300 })}
-          title="Zoom In"
-          icon={<ZoomIn size={14} />}
-        />
-
-        {/* Zoom out */}
-        <ToolbarButton
-          onClick={() => zoomOut({ duration: 300 })}
-          title="Zoom Out"
-          icon={<ZoomOut size={14} />}
-        />
-
-        {/* Fit view */}
-        <ToolbarButton
-          onClick={handleFit}
-          title="Fit View"
-          icon={<Maximize2 size={14} />}
-        />
-
-        <div className="h-5 w-px bg-white/10 mx-1" />
-
-        {/* Load full graph */}
+      {/* Control buttons */}
+      <div className="flex items-center gap-1 flex-shrink-0">
+        <ToolbarButton onClick={onToggleFilters} active={isFiltersOpen} title="Toggle Filters" icon={<Filter size={13} />} label="Filters" />
+        <div className="mx-1 h-5 w-px bg-slate-800" />
+        <ToolbarButton onClick={() => zoomIn({ duration: 300 })} title="Zoom In" icon={<ZoomIn size={13} />} />
+        <ToolbarButton onClick={() => zoomOut({ duration: 300 })} title="Zoom Out" icon={<ZoomOut size={13} />} />
+        <ToolbarButton onClick={handleFit} title="Fit View" icon={<Maximize2 size={13} />} />
+        <div className="mx-1 h-5 w-px bg-slate-800" />
         <ToolbarButton
           onClick={onLoadFullGraph}
           active={isFullGraph}
           title={isFullGraph ? 'Full graph loaded' : 'Load Full Graph'}
-          icon={<Layers size={14} />}
-          label={isFullGraph ? 'Full' : 'Expand'}
+          icon={<Layers size={13} />}
+          label={isFullGraph ? 'Full Graph' : 'Expand All'}
         />
+        <ToolbarButton onClick={handleExport} title="Export SVG" icon={<Download size={13} />} />
+        <ToolbarButton onClick={onReset} title="Reset View" icon={<RotateCcw size={13} />} />
+      </div>
 
-        {/* Export */}
-        <ToolbarButton
-          onClick={handleExport}
-          title="Export SVG"
-          icon={<Download size={14} />}
-        />
+      <div className="h-5 w-px bg-slate-800 mx-1" />
 
-        {/* Reset */}
-        <ToolbarButton
-          onClick={onReset}
-          title="Reset Graph"
-          icon={<RotateCcw size={14} />}
+      {/* Center: real search bar */}
+      <div className="flex-1 min-w-0 max-w-xs relative">
+        <SearchPanel
+          query={searchQuery}
+          onQueryChange={onSearchChange}
+          results={searchResults}
+          onSelectResult={onSelectSearchResult}
         />
       </div>
 
-      {/* Spacer */}
-      <div className="flex-1" />
+      <div className="h-5 w-px bg-slate-800 mx-1" />
 
-      {/* Right: search hint */}
-      <div className="hidden md:flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/3 px-3 py-1.5 text-[10px] text-slate-500">
-        <Search size={11} />
-        <span>Search in sidebar</span>
-      </div>
-
-      {/* AI Explain */}
+      {/* Right: AI button */}
       <button
         onClick={onAIExplain}
-        className="ml-2 flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-purple-900/30 hover:from-purple-500 hover:to-indigo-500 transition-all duration-200 hover:shadow-purple-800/40"
+        className="flex-shrink-0 flex items-center gap-2 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-lg shadow-purple-900/30 hover:from-purple-500 hover:to-indigo-500 hover:shadow-purple-800/40 hover:scale-[1.03] transition-all duration-200"
       >
-        <Brain size={13} />
-        <span>AI Explain Network</span>
-        <div className="flex h-3.5 w-3.5 items-center justify-center rounded-full bg-white/20 text-[8px] font-bold">
-          AI
-        </div>
+        <Brain size={12} />
+        AI Explain
       </button>
     </div>
   );
@@ -163,10 +132,10 @@ function ToolbarButton({
     <button
       onClick={onClick}
       title={title}
-      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-colors ${
+      className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-[11px] font-medium transition-all duration-150 ${
         active
-          ? 'bg-cyan/20 text-cyan border border-cyan/30'
-          : 'text-slate-400 hover:bg-white/5 hover:text-slate-200'
+          ? 'bg-cyan/15 text-cyan border border-cyan/25'
+          : 'text-slate-400 hover:bg-slate-800/40 hover:text-slate-200'
       }`}
     >
       {icon}

@@ -14,11 +14,16 @@ export function MiniMapPanel({ nodes: _nodes }: MiniMapPanelProps) {
         return entityType ? ENTITY_COLORS[entityType] : '#475569';
       }}
       nodeStrokeWidth={0}
-      maskColor="rgba(8, 17, 32, 0.75)"
-      className="!bg-navy/90 !border !border-white/10 !rounded-xl overflow-hidden !bottom-4 !right-4 shadow-xl"
+      nodeBorderRadius={4}
+      maskColor="rgba(8, 17, 32, 0.80)"
       style={{
+        background: 'rgba(8, 17, 32, 0.9)',
+        border: '1px solid rgba(255,255,255,0.08)',
+        borderRadius: 12,
         width: 160,
         height: 100,
+        bottom: 16,
+        right: 16,
       }}
     />
   );

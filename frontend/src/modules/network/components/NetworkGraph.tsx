@@ -1,7 +1,6 @@
 import { useCallback, useMemo } from 'react';
 import ReactFlow, {
   Background,
-  Controls,
   BackgroundVariant,
   type NodeTypes,
   type EdgeTypes,
@@ -10,12 +9,14 @@ import ReactFlow, {
 import 'reactflow/dist/style.css';
 import type { NetworkNode, NetworkEdge } from '../types';
 import { EntityNode } from './EntityNode';
+import { ClusterGroupNode } from './ClusterGroupNode';
 import { RelationshipEdge } from './RelationshipEdge';
 import { Legend } from './Legend';
 import { MiniMapPanel } from './MiniMapPanel';
+import { Network, GitBranch } from 'lucide-react';
 
 // Register custom types outside of component to prevent remounting
-const nodeTypes: NodeTypes = { entityNode: EntityNode };
+const nodeTypes: NodeTypes = { entityNode: EntityNode, clusterGroup: ClusterGroupNode };
 const edgeTypes: EdgeTypes = { relationshipEdge: RelationshipEdge };
 
 interface NetworkGraphProps {
@@ -55,7 +56,7 @@ export function NetworkGraph({
   );
 
   // Stable default viewport
-  const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 0.6 }), []);
+  const defaultViewport = useMemo(() => ({ x: 0, y: 0, zoom: 0.55 }), []);
 
   return (
     <div className="relative flex-1 min-h-0">
@@ -70,10 +71,10 @@ export function NetworkGraph({
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         defaultViewport={defaultViewport}
-        minZoom={0.1}
+        minZoom={0.08}
         maxZoom={3}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.18 }}
         nodesDraggable
         nodesConnectable={false}
         elementsSelectable
@@ -85,22 +86,14 @@ export function NetworkGraph({
         proOptions={{ hideAttribution: true }}
         style={{ background: 'transparent' }}
       >
-        {/* Dot grid background */}
+        {/* Subtle grid background */}
         <Background
-          variant={BackgroundVariant.Dots}
-          gap={28}
-          size={1}
-          color="rgba(148, 163, 184, 0.12)"
+          variant={BackgroundVariant.Lines}
+          gap={40}
+          size={0.5}
+          color="rgba(148, 163, 184, 0.04)"
         />
 
-        {/* Controls (zoom, fit) */}
-        <Controls
-          showZoom
-          showFitView
-          showInteractive={false}
-          className="!bg-navy/90 !border !border-white/10 !rounded-xl !shadow-xl overflow-hidden !bottom-4 !right-[185px]"
-          style={{ gap: 0 }}
-        />
 
         {/* MiniMap */}
         <MiniMapPanel nodes={nodes} />
@@ -112,9 +105,21 @@ export function NetworkGraph({
       {/* Empty state */}
       {nodes.length === 0 && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-          <div className="text-center">
-            <p className="text-sm font-semibold text-slate-500">No entities match the current filters</p>
-            <p className="text-xs text-slate-600 mt-1">Adjust filters or reset to see the full network</p>
+          <div className="flex flex-col items-center gap-5 text-center">
+            {/* Animated network icon */}
+            <div className="relative">
+              <div className="h-20 w-20 rounded-full border border-white/5 flex items-center justify-center"
+                style={{ background: 'radial-gradient(circle, rgba(6,182,212,0.08) 0%, transparent 70%)' }}>
+                <div className="h-14 w-14 rounded-full border border-cyan/10 flex items-center justify-center animate-pulse">
+                  <Network size={28} className="text-cyan/30" />
+                </div>
+              </div>
+              <GitBranch size={14} className="absolute -top-1 -right-1 text-slate-600" />
+            </div>
+            <div>
+              <p className="text-sm font-semibold text-slate-500">No entities match the current filters</p>
+              <p className="text-xs text-slate-600 mt-1.5">Adjust filters or reset to see the full network</p>
+            </div>
           </div>
         </div>
       )}

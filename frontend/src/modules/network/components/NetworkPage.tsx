@@ -5,6 +5,7 @@ import { useEntityDetails } from '../hooks/useEntityDetails';
 import { useAIExplanation } from '../hooks/useAIExplanation';
 import { NetworkGraph } from './NetworkGraph';
 import { NetworkToolbar } from './NetworkToolbar';
+import { NetworkStatsStrip } from './NetworkStatsStrip';
 import { FilterSidebar } from './FilterSidebar';
 import { DetailsPanel } from './DetailsPanel';
 import { AIExplanationPanel } from './AIExplanationPanel';
@@ -83,7 +84,7 @@ function NetworkPageInner() {
     <div className="relative flex h-full overflow-hidden bg-navy">
       {/* Mobile Backdrop */}
       {isFiltersOpen && (
-        <div 
+        <div
           className="fixed inset-0 z-40 bg-navy/80 backdrop-blur-sm lg:hidden"
           onClick={() => setIsFiltersOpen(false)}
         />
@@ -114,19 +115,27 @@ function NetworkPageInner() {
         )}
       </div>
 
-      {/* Center: toolbar + graph */}
+      {/* Center: toolbar + stats strip + graph */}
       <div className="relative flex flex-1 flex-col min-w-0">
         {/* Toolbar */}
         <NetworkToolbar
           totalNodes={totalNodeCount}
           totalEdges={totalEdgeCount}
+          nodes={nodes}
+          searchQuery={searchQuery}
+          onSearchChange={setSearchQuery}
+          searchResults={searchResults}
+          onSelectSearchResult={handleSelectSearchResult}
           isFiltersOpen={isFiltersOpen}
           onToggleFilters={() => setIsFiltersOpen((p) => !p)}
           onReset={resetGraph}
           onLoadFullGraph={loadFullGraph}
-          onAIExplain={openExplanation}
+          onAIExplain={() => openExplanation(filters)}
           isFullGraph={isFullGraph}
         />
+
+        {/* Stats strip */}
+        <NetworkStatsStrip nodes={nodes} edges={edges} />
 
         {/* Graph canvas */}
         <div className="relative flex flex-1 min-h-0">
@@ -155,7 +164,7 @@ function NetworkPageInner() {
             explanation={explanation}
             error={aiError}
             onClose={closeExplanation}
-            onRefresh={aiRefresh}
+            onRefresh={() => aiRefresh(filters)}
           />
         </div>
       </div>
@@ -165,12 +174,7 @@ function NetworkPageInner() {
 
 export function NetworkPage() {
   return (
-    // Break out of the AppShell max-w-7xl / px-4 / py-6 container
-    // so the graph fills the entire main area
-    <div
-      className="fixed inset-x-0 bottom-0 z-10 lg:left-[280px]"
-      style={{ top: 73 }} // Approx Navbar height
-    >
+    <div className="h-full w-full flex flex-col min-h-0 relative">
       <ReactFlowProvider>
         <NetworkPageInner />
       </ReactFlowProvider>
