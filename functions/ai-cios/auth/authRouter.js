@@ -115,6 +115,13 @@ router.post('/login', async (req, res) => {
       maxAge: 8 * 60 * 60 * 1000 // 8 hours
     });
 
+    // Set non-HttpOnly custom_session cookie so the frontend can check if session exists
+    res.cookie('custom_session', 'true', {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 8 * 60 * 60 * 1000 // 8 hours
+    });
+
     res.json({ success: true, message: 'Logged in successfully' });
   } catch (error) {
     console.error('Login error:', error);
@@ -126,6 +133,14 @@ router.post('/login', async (req, res) => {
 router.post('/logout', (req, res) => {
   res.clearCookie('token', {
     httpOnly: true,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  res.clearCookie('custom_session', {
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'strict'
+  });
+  res.clearCookie('google_session', {
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'strict'
   });
@@ -308,6 +323,14 @@ router.post('/google-login', async (req, res) => {
         first_name: given_name || name || 'Google',
         last_name: family_name || 'User'
       }
+    });
+
+    // Set a readable cookie with the authenticated user's email so the backend
+    // can identify the Google-authenticated user on subsequent requests/page refreshes.
+    res.cookie('google_session', email, {
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      maxAge: 8 * 60 * 60 * 1000 // 8 hours
     });
 
     // If it's a string, wrap it. If it's an object, send it directly.
