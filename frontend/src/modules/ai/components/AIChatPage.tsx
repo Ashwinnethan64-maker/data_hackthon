@@ -160,8 +160,8 @@ export function AIChatPage() {
                 )} />
                 <p className="text-[9px] text-slate-450">
                   {isStreaming 
-                    ? 'Cross-referencing database districts and constructing intelligence response...' 
-                    : 'System Status: Synchronized with Datastore.'}
+                    ? (language === 'kn' ? 'ದಾಖಲೆಗಳನ್ನು ಪರಿಶೀಲಿಸಲಾಗುತ್ತಿದೆ ಮತ್ತು ತನಿಖಾ ಉತ್ತರವನ್ನು ಸಿದ್ಧಪಡಿಸಲಾಗುತ್ತಿದೆ...' : 'Cross-referencing database districts and constructing intelligence response...') 
+                    : (language === 'kn' ? 'ವ್ಯವಸ್ಥೆಯ ಸ್ಥಿತಿ: ಡೇಟಾಬೇಸ್‌ನೊಂದಿಗೆ ಸಂಪರ್ಕಗೊಂಡಿದೆ.' : 'System Status: Synchronized with Datastore.')}
                 </p>
               </div>
             </div>

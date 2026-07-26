@@ -14,6 +14,16 @@ const defaultSuggestedPrompts = [
   'Generate investigation report',
 ];
 
+const kannadaSuggestedPrompts = [
+  'ಬೆಂಗಳೂರಿನಲ್ಲಿ ಸೈಬರ್ ಅಪರಾಧ ಪ್ರಕರಣಗಳನ್ನು ತೋರಿಸಿ',
+  'ಮೈಸೂರು ಜಿಲ್ಲೆಯ ಬಾಕಿ ಪ್ರಕರಣಗಳ ಪಟ್ಟಿ',
+  'ಅತ್ಯಂತ ತುರ್ತು ಮತ್ತು ಉನ್ನತ ಆದ್ಯತೆಯ FIRಗಳು',
+  'ಬಂಧನ ಬಾಕಿ ಇರುವ ಪ್ರಕರಣಗಳನ್ನು ಹುಡುಕಿ',
+  'ಮಾದಕ ದ್ರವ್ಯ ಪ್ರಕರಣಗಳ ಸಾರಾಂಶ',
+  'ಬೆಂಗಳೂರಿನಲ್ಲಿ ಸುಲಿಗೆ ಪ್ರಕರಣಗಳನ್ನು ಹುಡುಕಿ',
+  'ತನಿಖಾ ವರದಿಯನ್ನು ರಚಿಸಿ',
+];
+
 const FALLBACK_RESPONSE: AiResponse = {
   summary: 'AI-CIOS is ready. Please send a query to begin investigation.',
   evidence: [],
@@ -350,7 +360,7 @@ export function useAiInvestigator() {
     threads,
     selectedThreadId,
     setSelectedThreadId,
-    promptChips: defaultSuggestedPrompts,
+    promptChips: language === 'kn' ? kannadaSuggestedPrompts : defaultSuggestedPrompts,
     messages,
     query,
     setQuery,

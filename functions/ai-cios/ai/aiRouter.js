@@ -33,29 +33,52 @@ const KANNADA_TRANSLATIONS = {
 // POST chat analysis (RAG pipeline)
 router.post('/chat', async (req, res) => {
   try {
-    const { query, messages = [], context = {}, language = 'en' } = req.body;
+    const { query = '', messages = [], context = {}, language = 'en' } = req.body;
     const lowerQuery = query ? query.toLowerCase() : '';
 
-    // Intent Detection — map keywords to actual crimeCategory values in the DB
+    // Helper to check if text contains Kannada script
+    const hasKannadaScript = /[\u0C80-\u0CFF]/.test(query);
+    const isKannada = language === 'kn' || hasKannadaScript;
+
+    // Intent Detection — map keywords (English & Kannada) to actual crimeCategory values in the DB
     const CRIME_MAP = {
       burglary: 'Burglary',
       robbery: 'Burglary',
       theft: 'Burglary',
+      'ಕಳುವು': 'Burglary',
+      'ದರೋಡೆ': 'Burglary',
+      'ಮನೆಗಳ್ಳತನ': 'Burglary',
+      dharode: 'Burglary',
       cyber: 'Cybercrime',
       hacking: 'Cybercrime',
       phishing: 'Cybercrime',
+      'ಸೈಬರ್': 'Cybercrime',
+      'ಹ್ಯಾಕಿಂಗ್': 'Cybercrime',
+      'ಫಿಶಿಂಗ್': 'Cybercrime',
       fraud: 'Fraud',
       cheating: 'Fraud',
       forgery: 'Fraud',
+      'ವಂಚನೆ': 'Fraud',
+      'ಫ್ರಾಡ್': 'Fraud',
+      'ನಕಲಿ': 'Fraud',
       drug: 'Drug Trafficking',
       narcotic: 'Drug Trafficking',
       ndps: 'Drug Trafficking',
+      'ಮಾದಕ': 'Drug Trafficking',
+      'ಗಾಂಜಾ': 'Drug Trafficking',
+      'ಡ್ರಗ್ಸ್': 'Drug Trafficking',
       riot: 'Rioting',
       rioting: 'Rioting',
+      'ಕೋಲಾಹಲ': 'Rioting',
+      'ಗಲಭೆ': 'Rioting',
       extortion: 'Extortion',
       blackmail: 'Extortion',
+      'ಬೆದರಿಕೆ': 'Extortion',
+      'ಸುಲಿಗೆ': 'Extortion',
       assault: 'Assault',
       hurt: 'Assault',
+      'ಹಲ್ಲೆ': 'Assault',
+      'ಹೊಡೆದಾಟ': 'Assault'
     };
 
     let crime = context.crime;
@@ -66,20 +89,20 @@ router.post('/chat', async (req, res) => {
       }
     }
     
-    let district = lowerQuery.includes('mysuru') ? 'Mysuru'
-                 : lowerQuery.includes('bengaluru') ? 'Bengaluru'
-                 : lowerQuery.includes('mangaluru') ? 'Mangaluru'
-                 : lowerQuery.includes('dharwad') ? 'Dharwad'
-                 : lowerQuery.includes('belagavi') ? 'Belagavi'
-                 : lowerQuery.includes('kalaburagi') ? 'Kalaburagi'
-                 : lowerQuery.includes('dakshina kannada') ? 'Dakshina Kannada'
-                 : lowerQuery.includes('hubballi') ? 'Hubballi-Dharwad'
+    let district = lowerQuery.includes('mysuru') || lowerQuery.includes('ಮೈಸೂರು') ? 'Mysuru'
+                 : lowerQuery.includes('bengaluru') || lowerQuery.includes('ಬೆಂಗಳೂರು') ? 'Bengaluru'
+                 : lowerQuery.includes('mangaluru') || lowerQuery.includes('ಮಂಗಳೂರು') ? 'Mangaluru'
+                 : lowerQuery.includes('dharwad') || lowerQuery.includes('ಧಾರವಾಡ') ? 'Dharwad'
+                 : lowerQuery.includes('belagavi') || lowerQuery.includes('ಬೆಳಗಾವಿ') ? 'Belagavi'
+                 : lowerQuery.includes('kalaburagi') || lowerQuery.includes('ಕಲಬುರಗಿ') ? 'Kalaburagi'
+                 : lowerQuery.includes('dakshina kannada') || lowerQuery.includes('ದಕ್ಷಿಣ ಕನ್ನಡ') ? 'Dakshina Kannada'
+                 : lowerQuery.includes('hubballi') || lowerQuery.includes('ಹುಬ್ಬಳ್ಳಿ') ? 'Hubballi-Dharwad'
                  : context.district;
 
-    const isRepeat = lowerQuery.includes('repeat') || lowerQuery.includes('offender');
+    const isRepeat = lowerQuery.includes('repeat') || lowerQuery.includes('offender') || lowerQuery.includes('ಪುನರಾವರ್ತಿತ') || lowerQuery.includes('ಖದೀಮ');
 
-    const status = lowerQuery.includes('solved') || lowerQuery.includes('closed') ? 'Closed'
-                 : lowerQuery.includes('pending') || lowerQuery.includes('unresolved') || lowerQuery.includes('open') ? 'Open'
+    const status = lowerQuery.includes('solved') || lowerQuery.includes('closed') || lowerQuery.includes('ಮುಚ್ಚಲಾಗಿದೆ') || lowerQuery.includes('ಪೂರ್ಣಗೊಂಡಿದೆ') ? 'Closed'
+                 : lowerQuery.includes('pending') || lowerQuery.includes('unresolved') || lowerQuery.includes('open') || lowerQuery.includes('ಬಾಕಿ') || lowerQuery.includes('ತೆರೆದ') ? 'Open'
                  : context.status;
 
     // RAG Retrieval
@@ -139,9 +162,11 @@ router.post('/chat', async (req, res) => {
       const systemPrompt = `You are an AI Crime Intelligence Assistant for the Karnataka State Police. 
 Analyze the provided cases, extract evidence, detect suspect connections, and answer the user's query.
 Be extremely concise, professional, and factual. Cite the FIR numbers when referencing cases.
-Do not output any internal reasoning, draft thinking, or step-by-step chain-of-thought analysis. Output ONLY the final response.`;
+Do not output any internal reasoning, draft thinking, or step-by-step chain-of-thought analysis. Output ONLY the final response.
+${isKannada ? 'CRITICAL REQUIREMENT: The output MUST be written entirely in clean, fluent, natural, and formal Kannada (ಕನ್ನಡ ಭಾಷೆಯಲ್ಲಿ ಉತ್ನರಿಸಿ). Translate all analysis, summaries, and recommendations into Kannada script.' : ''}`;
 
       const userPrompt = `User Query: "${query}"
+Language Mode: ${isKannada ? 'Kannada (ಕನ್ನಡ)' : 'English'}
 Retrieved Case Context:
 ${JSON.stringify(filtered.slice(0, 3).map(c => ({
   firNumber: c.firNumber,
@@ -159,7 +184,7 @@ ${JSON.stringify(filtered.slice(0, 3).map(c => ({
   timeline: parseJSONField(c.timeline) || []
 })), null, 2)}
 
-Provide a summary answering the user query.`;
+Provide a concise response in ${isKannada ? 'Kannada (ಕನ್ನಡ)' : 'English'} answering the user query.`;
 
       const messagesPayload = [
         { role: 'system', content: systemPrompt },
@@ -172,12 +197,12 @@ Provide a summary answering the user query.`;
       console.warn('[WARN] QuickML GLM query failed, using rule-based fallback:', error.message);
 
       if (filtered.length === 0) {
-        summary = language === 'kn' ? KANNADA_TRANSLATIONS.noResults : 'I could not find any matching cases based on your query.';
+        summary = isKannada ? KANNADA_TRANSLATIONS.noResults : 'I could not find any matching cases based on your query.';
       } else {
         let caseDesc = primaryCase.crimeCategory ? primaryCase.crimeCategory.toLowerCase() : 'unknown';
         let distDesc = primaryCase.district || 'the region';
         
-        if (language === 'kn') {
+        if (isKannada) {
           let sumBase = KANNADA_TRANSLATIONS.summaryBase.replace('{count}', filtered.length);
           let signal = KANNADA_TRANSLATIONS.strongestSignal.replace('{district}', distDesc).replace('{crime}', caseDesc);
           summary = sumBase + signal;
@@ -231,7 +256,7 @@ Provide a summary answering the user query.`;
         { title: 'FIR Registered', time: primaryCase.incidentDate },
         { title: 'Evidence Collected', time: 'Ongoing' }
       ] : [],
-      suggestedQuestions: language === 'kn' ? [
+      suggestedQuestions: isKannada ? [
         KANNADA_TRANSLATIONS.suggestion1, KANNADA_TRANSLATIONS.suggestion2, KANNADA_TRANSLATIONS.suggestion3, KANNADA_TRANSLATIONS.suggestion4
       ] : [
         'Show related cases from the same station',
@@ -239,7 +264,7 @@ Provide a summary answering the user query.`;
         'Generate investigation report',
         'List applicable legal sections'
       ],
-      recommendedActions: language === 'kn' ? [
+      recommendedActions: isKannada ? [
         KANNADA_TRANSLATIONS.action1, KANNADA_TRANSLATIONS.action2, KANNADA_TRANSLATIONS.action3
       ] : [
         'Open similar case records',
