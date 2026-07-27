@@ -13,10 +13,14 @@ const TILE_LAYERS = {
   standard: {
     url: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
     attribution: '&copy; <a href="https://carto.com/attributions">CARTO</a>',
+    maxZoom: 19,
+    maxNativeZoom: 19,
   },
   satellite: {
     url: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
     attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+    maxZoom: 19,
+    maxNativeZoom: 18,
   },
 };
 
@@ -78,7 +82,8 @@ export function CrimeMap({
         key={mapType}
         url={tileLayer.url}
         attribution={tileLayer.attribution}
-        maxZoom={19}
+        maxZoom={tileLayer.maxZoom}
+        maxNativeZoom={tileLayer.maxNativeZoom}
       />
       <ZoomControl position="bottomright" />
 

@@ -29,17 +29,18 @@ export function HeatmapLayer({ points }: HeatmapLayerProps) {
     }
 
     const layer = L.heatLayer(points, {
-      radius: 30,
-      blur: 22,
+      radius: 25,
+      blur: 18,
       maxZoom: 15,
+      max: 1.0,
       gradient: {
-        0.0: '#0ea5e9',
-        0.3: '#6366f1',
-        0.6: '#f59e0b',
-        0.8: '#ef4444',
-        1.0: '#dc2626',
+        0.2: 'rgba(59, 130, 246, 0.5)',   // Blue glow for low severity
+        0.4: 'rgba(234, 179, 8, 0.7)',    // Yellow warning
+        0.7: 'rgba(249, 115, 22, 0.85)',  // Orange high alert
+        0.9: 'rgba(239, 68, 68, 0.95)',   // Crimson red severe
+        1.0: 'rgba(220, 38, 38, 1.0)',    // Deep critical red core
       },
-      minOpacity: 0.4,
+      minOpacity: 0.5,
     });
 
     layer.addTo(map);
