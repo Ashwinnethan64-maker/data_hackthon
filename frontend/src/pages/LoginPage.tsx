@@ -3,6 +3,7 @@ import { useNavigate, Navigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { useAuth, type UserRole } from '../store/AuthContext';
+import { BrandLogo } from '../components/common/BrandLogo';
 
 export function LoginPage() {
   const navigate = useNavigate();
@@ -32,7 +33,8 @@ export function LoginPage() {
   // Show a loading screen if checking session on mount
   if (loading) {
     return (
-      <div className="flex h-screen items-center justify-center bg-slate-950">
+      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-950">
+        <BrandLogo size={48} />
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan/30 border-t-cyan"></div>
       </div>
     );
@@ -127,11 +129,14 @@ export function LoginPage() {
             </div>
           </section>
 
-          <section className="flex items-center justify-center bg-slate-950/40 p-8 lg:p-12">
-            <Card className="w-full max-w-md p-6 sm:p-8">
+          <section className="flex items-center justify-center bg-slate-950/40 p-6 lg:p-10">
+            <Card className="w-full max-w-md p-6 sm:p-7">
+              <div className="flex flex-col items-center text-center mb-4">
+                <BrandLogo showText variant="login" />
+              </div>
               <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan/80">Secure access</p>
-              <h2 className="mt-2 text-2xl font-bold text-white">Login</h2>
-              <p className="mt-2 text-sm text-slate-400">Use your credentials or bypass using mock credentials.</p>
+              <h2 className="mt-1 text-xl sm:text-2xl font-bold text-white">Login</h2>
+              <p className="mt-1 text-sm text-slate-400">Use your credentials or bypass using mock credentials.</p>
 
               <form className="mt-8 space-y-4" onSubmit={handleManualLogin}>
                 {error && (

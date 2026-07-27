@@ -4,6 +4,7 @@ import { NavLink } from 'react-router-dom';
 import type { NavigationItem } from '../types/navigation';
 import { Badge } from './Badge';
 import { useAuth } from '../store/AuthContext';
+import { BrandLogo } from './common/BrandLogo';
 
 const navigationItems: NavigationItem[] = [
   { label: 'Dashboard', path: '/dashboard', icon: LayoutDashboard },
@@ -52,14 +53,12 @@ export function Sidebar({ isOpen, onClose, isTabletCollapsed = false }: SidebarP
         } ${isTabletCollapsed ? 'md:w-[88px] md:px-2' : 'w-[280px] px-4'} lg:w-[280px] lg:px-4`}
       >
         <div className={`flex items-center pb-6 ${isTabletCollapsed ? 'md:justify-center lg:justify-between lg:px-2' : 'justify-between px-2'}`}>
-          <div className={`space-y-1 ${isTabletCollapsed ? 'hidden lg:block' : 'block'}`}>
-            <p className="text-xs font-semibold uppercase tracking-[0.3em] text-cyan/80">AI-CIOS</p>
-            <h1 className="text-lg font-bold text-white">Crime Intelligence OS</h1>
-            <p className="text-sm text-slate-400">Karnataka State Police</p>
+          <div className={`${isTabletCollapsed ? 'hidden lg:block' : 'block'}`}>
+            <BrandLogo showText variant="sidebar" />
           </div>
           {isTabletCollapsed && (
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-cyan/20 text-cyan font-bold lg:hidden">
-              AI
+            <div className="lg:hidden flex items-center justify-center">
+              <BrandLogo size={36} />
             </div>
           )}
           <button 

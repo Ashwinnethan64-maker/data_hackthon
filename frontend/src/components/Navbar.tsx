@@ -5,6 +5,8 @@ import { useState } from 'react';
 import { Modal } from './Modal';
 import { Link } from 'react-router-dom';
 import { ArrowUpRight } from 'lucide-react';
+import { BrandLogo } from './common/BrandLogo';
+
 interface NavbarProps {
   onMenuClick: () => void;
   onTabletCollapseToggle?: () => void;
@@ -34,8 +36,7 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
           </button>
           
           <div className="hidden md:block">
-            <p className="text-[10px] md:text-xs font-semibold uppercase tracking-[0.3em] text-cyan/80">Mission Control</p>
-            <h2 className="mt-0.5 md:mt-1 text-lg md:text-xl font-bold text-white">AI-CIOS</h2>
+            <BrandLogo size={32} showText variant="header" />
           </div>
         </div>
 
