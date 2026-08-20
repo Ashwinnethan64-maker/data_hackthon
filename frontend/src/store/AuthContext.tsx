@@ -80,59 +80,54 @@ export function AuthProvider({ children }: PropsWithChildren) {
             // Not authenticated or network timeout
           }
 
-          const hasCustomSession = document.cookie.split(';').some((item) => item.trim().startsWith('custom_session='));
-          const hasGoogleSession = document.cookie.split(';').some((item) => item.trim().startsWith('google_session='));
+          // 1. Check if custom/Google session or Catalyst session is active, or test /auth/me
+          try {
+            const controller = new AbortController();
+            const timer = setTimeout(() => controller.abort(), 2000);
+            const profileRes = await fetch('/server/ai-cios/auth/me', {
+              credentials: 'include',
+              signal: controller.signal
+            });
+            clearTimeout(timer);
 
-          if (isCatalystAuthenticated || hasGoogleSession || hasCustomSession) {
-            // Fetch database profile details from custom backend with timeout
-            try {
-              const controller = new AbortController();
-              const timer = setTimeout(() => controller.abort(), 2500);
-              const profileRes = await fetch('/server/ai-cios/auth/me', {
-                credentials: 'include',
-                signal: controller.signal
-              });
-              clearTimeout(timer);
-
-              if (profileRes.ok) {
-                const text = await profileRes.text();
-                const dbProfile = text ? JSON.parse(text) : null;
-                if (dbProfile) {
-                  return {
-                    id: dbProfile.id || dbProfile.ROWID || 'db-user',
-                    name: dbProfile.name || dbProfile.username,
-                    username: dbProfile.username,
-                    email: dbProfile.username,
-                    role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
-                    district: dbProfile.district || 'Bengaluru',
-                  };
-                }
+            if (profileRes.ok) {
+              const text = await profileRes.text();
+              const dbProfile = text ? JSON.parse(text) : null;
+              if (dbProfile && (dbProfile.username || dbProfile.id)) {
+                return {
+                  id: dbProfile.id || dbProfile.ROWID || 'db-user',
+                  name: dbProfile.name || dbProfile.username,
+                  username: dbProfile.username,
+                  email: dbProfile.username,
+                  role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
+                  district: dbProfile.district || 'Bengaluru',
+                };
               }
-            } catch (err) {
-              console.warn("Custom profile lookup skipped:", err);
             }
+          } catch (err) {
+            // /auth/me skipped
+          }
 
-            if (isCatalystAuthenticated) {
-              try {
-                const userResponse = await Promise.race([
-                  catalyst.userManagement.getCurrentProjectUser(),
-                  new Promise((_, reject) => setTimeout(() => reject(new Error('User profile fetch timeout')), 2000))
-                ]);
-                const projectUser = userResponse?.content;
-                if (projectUser) {
-                  return {
-                    id: projectUser.ZUID || projectUser.user_id || 'unknown',
-                    name: projectUser.first_name
-                      ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
-                      : projectUser.email_id || 'User',
-                    username: projectUser.email_id || 'unknown_user',
-                    email: projectUser.email_id,
-                    role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
-                  };
-                }
-              } catch (userErr) {
-                console.warn("Catalyst getCurrentProjectUser skipped:", userErr);
+          if (isCatalystAuthenticated) {
+            try {
+              const userResponse = await Promise.race([
+                catalyst.userManagement.getCurrentProjectUser(),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('User profile fetch timeout')), 1500))
+              ]);
+              const projectUser = userResponse?.content;
+              if (projectUser) {
+                return {
+                  id: projectUser.ZUID || projectUser.user_id || 'unknown',
+                  name: projectUser.first_name
+                    ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
+                    : projectUser.email_id || 'User',
+                  username: projectUser.email_id || 'unknown_user',
+                  email: projectUser.email_id,
+                  role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
+                };
               }
+            } catch (userErr) {
+              console.warn("Catalyst getCurrentProjectUser skipped:", userErr);
             }
           }
 

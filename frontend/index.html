@@ -17,6 +17,16 @@
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://static.zohocdn.com/catalyst/sdk/js/4.5.0/catalystWebSDK.js"></script>
     <script src="/__catalyst/sdk/init.js" defer onError="console.warn('Catalyst SDK init fallback')"></script>
+    <script>
+      // Single Page Application deep link restoration for static hosting
+      (function() {
+        var redirect = sessionStorage.redirect;
+        delete sessionStorage.redirect;
+        if (redirect && redirect !== location.href) {
+          history.replaceState(null, null, redirect);
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

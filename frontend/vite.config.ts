@@ -40,13 +40,28 @@ export default defineConfig({
       closeBundle() {
         try {
           const distDir = path.resolve(process.cwd(), 'dist');
-          const srcPath = path.resolve(distDir, 'index.html');
           const destPath = path.resolve(distDir, '404.html');
-          if (fs.existsSync(srcPath)) {
-            fs.copyFileSync(srcPath, destPath);
-          }
+          const spa404Html = `<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AI-CIOS Redirecting...</title>
+    <script>
+      sessionStorage.redirect = location.href;
+      var target = '/app/index.html';
+      if (location.search) target += location.search;
+      if (location.hash) target += location.hash;
+      location.replace(target);
+    </script>
+  </head>
+  <body style="background: #020617; color: #94a3b8; font-family: sans-serif; display: flex; height: 100vh; align-items: center; justify-content: center;">
+    <p>Loading AI-CIOS...</p>
+  </body>
+</html>`;
+          fs.writeFileSync(destPath, spa404Html, 'utf-8');
         } catch (err) {
-          console.error('Failed to copy index.html to 404.html:', err);
+          console.error('Failed to generate 404.html:', err);
         }
       }
     }
