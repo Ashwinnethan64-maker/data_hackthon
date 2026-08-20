@@ -10,7 +10,6 @@ export function useAIExplanation() {
 
   const openExplanation = useCallback(async (filters?: NetworkFilterOptions) => {
     setIsOpen(true);
-    if (explanation) return; // already loaded
     setIsLoading(true);
     setError(null);
     try {
@@ -21,7 +20,7 @@ export function useAIExplanation() {
     } finally {
       setIsLoading(false);
     }
-  }, [explanation]);
+  }, []);
 
   const closeExplanation = useCallback(() => {
     setIsOpen(false);

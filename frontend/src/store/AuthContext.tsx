@@ -38,106 +38,132 @@ export function AuthProvider({ children }: PropsWithChildren) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let isMounted = true;
+
     // Check if the user is authenticated via Catalyst or custom session
     const checkCatalystSession = async () => {
+      // Create a timeout promise to guarantee initialization never hangs
+      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3000));
+
+      const sessionCheckTask = async () => {
+        try {
+          const catalyst = (window as any).catalyst;
+          if (!catalyst || !catalyst.auth) {
+            return parseMockUserCookie();
+          }
+
+          const hasJwtCookie = document.cookie.split(';').some((item) => item.trim().startsWith('JWT_AUTH='));
+          if (hasJwtCookie) {
+            try {
+              const catalystClientId = catalyst.config?.zaid || catalyst.config?.client_id || import.meta.env.VITE_CATALYST_CLIENT_ID;
+              await Promise.race([
+                catalyst.auth.signinWithJwt(() => Promise.resolve({
+                  client_id: catalystClientId || '',
+                  scopes: "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
+                  jwt_token: ''
+                })),
+                new Promise((_, reject) => setTimeout(() => reject(new Error('JWT pre-init timeout')), 1500))
+              ]);
+            } catch (e) {
+              console.warn("Notice: JWT session pre-init skipped/timed out:", e);
+            }
+          }
+
+          let isCatalystAuthenticated = false;
+          try {
+            const authStatus = await Promise.race([
+              catalyst.auth.isUserAuthenticated(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Catalyst auth check timeout')), 2000))
+            ]);
+            isCatalystAuthenticated = authStatus?.status === 200 || authStatus === true;
+          } catch (authErr) {
+            // Not authenticated or network timeout
+          }
+
+          const hasCustomSession = document.cookie.split(';').some((item) => item.trim().startsWith('custom_session='));
+          const hasGoogleSession = document.cookie.split(';').some((item) => item.trim().startsWith('google_session='));
+
+          if (isCatalystAuthenticated || hasGoogleSession || hasCustomSession) {
+            // Fetch database profile details from custom backend with timeout
+            try {
+              const controller = new AbortController();
+              const timer = setTimeout(() => controller.abort(), 2500);
+              const profileRes = await fetch('/server/ai-cios/auth/me', {
+                credentials: 'include',
+                signal: controller.signal
+              });
+              clearTimeout(timer);
+
+              if (profileRes.ok) {
+                const text = await profileRes.text();
+                const dbProfile = text ? JSON.parse(text) : null;
+                if (dbProfile) {
+                  return {
+                    id: dbProfile.id || dbProfile.ROWID || 'db-user',
+                    name: dbProfile.name || dbProfile.username,
+                    username: dbProfile.username,
+                    email: dbProfile.username,
+                    role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
+                    district: dbProfile.district || 'Bengaluru',
+                  };
+                }
+              }
+            } catch (err) {
+              console.warn("Custom profile lookup skipped:", err);
+            }
+
+            if (isCatalystAuthenticated) {
+              try {
+                const userResponse = await Promise.race([
+                  catalyst.userManagement.getCurrentProjectUser(),
+                  new Promise((_, reject) => setTimeout(() => reject(new Error('User profile fetch timeout')), 2000))
+                ]);
+                const projectUser = userResponse?.content;
+                if (projectUser) {
+                  return {
+                    id: projectUser.ZUID || projectUser.user_id || 'unknown',
+                    name: projectUser.first_name
+                      ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
+                      : projectUser.email_id || 'User',
+                    username: projectUser.email_id || 'unknown_user',
+                    email: projectUser.email_id,
+                    role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
+                  };
+                }
+              } catch (userErr) {
+                console.warn("Catalyst getCurrentProjectUser skipped:", userErr);
+              }
+            }
+          }
+
+          return parseMockUserCookie();
+        } catch (error: any) {
+          console.warn("Session check fallback:", error?.message);
+          return parseMockUserCookie();
+        }
+      };
+
       try {
-        const catalyst = (window as any).catalyst;
-        if (!catalyst) {
-          console.error("Catalyst SDK not loaded");
-          setLoading(false);
-          return;
+        const resolvedUser: any = await Promise.race([sessionCheckTask(), timeoutPromise]);
+        if (isMounted) {
+          setUser(resolvedUser || parseMockUserCookie());
         }
-
-        // If the JWT_AUTH cookie is present from a previous login, manually trigger signinWithJwt
-        // to switch the SDK from its default ZcrfTokenProtocol to JwtTokenProtocol.
-        // Since the cookie is present, getJWTAuthToken() resolves immediately without calling our callback.
-        const hasJwtCookie = document.cookie.split(';').some((item) => item.trim().startsWith('JWT_AUTH='));
-        if (hasJwtCookie) {
-          try {
-            const catalystClientId = catalyst.config?.zaid || catalyst.config?.client_id || import.meta.env.VITE_CATALYST_CLIENT_ID;
-            await catalyst.auth.signinWithJwt(() => Promise.resolve({
-              client_id: catalystClientId || '',
-              scopes: "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
-              jwt_token: ''
-            }));
-          } catch (e) {
-            console.warn("Failed to pre-initialize JWT session protocol:", e);
-          }
+      } catch (err) {
+        if (isMounted) {
+          setUser(parseMockUserCookie());
         }
-
-        const isAuthenticated = await catalyst.auth.isUserAuthenticated();
-        console.log("Catalyst isUserAuthenticated:", isAuthenticated);
-
-        const hasCustomSession = document.cookie.split(';').some((item) => item.trim().startsWith('custom_session='));
-        const hasGoogleSession = document.cookie.split(';').some((item) => item.trim().startsWith('google_session='));
-
-        // isUserAuthenticated() returns an object {status, content} not a boolean.
-        // It returns status 200 when authenticated.
-        const isCatalystAuthenticated = isAuthenticated?.status === 200 || isAuthenticated === true;
-        console.log("Catalyst session active:", isCatalystAuthenticated, "| hasJwtCookie:", hasJwtCookie, "| hasGoogleSession:", hasGoogleSession, "| hasCustomSession:", hasCustomSession);
-
-        if (isCatalystAuthenticated || hasGoogleSession || hasCustomSession) {
-          // Fetch database profile details from the custom backend
-          try {
-            const profileRes = await fetch('/server/ai-cios/auth/me', {
-              credentials: 'include',
-            });
-            if (profileRes.ok) {
-              const dbProfile = await profileRes.json();
-              console.log("[DEBUG] /me response:", dbProfile);
-              setUser({
-                id: dbProfile.id,
-                name: dbProfile.name || dbProfile.username,
-                username: dbProfile.username,
-                email: dbProfile.username,
-                role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
-                district: dbProfile.district || 'Bengaluru',
-              });
-              return;
-            } else {
-              console.warn("[DEBUG] /me returned status:", profileRes.status);
-            }
-          } catch (err) {
-            console.warn("Failed to fetch custom database profile, falling back to Catalyst details:", err);
-          }
-
-          if (isCatalystAuthenticated) {
-            const userResponse = await catalyst.userManagement.getCurrentProjectUser();
-            const projectUser = userResponse?.content;
-
-            if (projectUser) {
-              setUser({
-                id: projectUser.ZUID || projectUser.user_id || 'unknown',
-                name: projectUser.first_name
-                  ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
-                  : projectUser.email_id || 'User',
-                username: projectUser.email_id || 'unknown_user',
-                email: projectUser.email_id,
-                role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
-              });
-              return;
-            }
-          }
-        }
-
-        // Fallback to Mock User from cookie if Catalyst/custom session is not active (development only)
-        setUser(parseMockUserCookie());
-      } catch (error: any) {
-        // Catalyst Web SDK throws a network error (code 700 / net-issue) when there is no active session.
-        if (error?.code === 700 || error?.name === 'server://net-issue' || error?.message?.includes('net-issue')) {
-          console.log("No active Catalyst session found.");
-        } else {
-          console.error("Error checking Catalyst session:", error);
-        }
-
-        // Check for mock user even on network error
-        setUser(parseMockUserCookie());
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
     checkCatalystSession();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   const value = useMemo<AuthContextValue>(
@@ -196,44 +222,83 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   body: JSON.stringify({ access_token: accessToken })
                 });
 
-                if (!backendRes.ok) {
-                  const errorData = await backendRes.json();
-                  throw new Error(errorData.error || 'Backend Google login failed');
+                let responseData: any = {};
+                try {
+                  const text = await backendRes.text();
+                  responseData = text ? JSON.parse(text) : {};
+                } catch {
+                  responseData = {};
                 }
 
-                const data = await backendRes.json();
+                if (!backendRes.ok) {
+                  throw new Error(responseData.error || `Backend Google login failed (HTTP ${backendRes.status})`);
+                }
 
-                // 2. Perform signinWithJwt inside Catalyst SDK
-                await catalyst.auth.signinWithJwt(() => {
-                  return new Promise((resolve) => {
-                    resolve({
-                      client_id: data.client_id || catalystClientId,
-                      scopes: data.scopes || "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
-                      jwt_token: data.jwt_token
+                const data = responseData;
+
+                // 2. Perform signinWithJwt inside Catalyst SDK if available
+                if (catalyst?.auth?.signinWithJwt) {
+                  try {
+                    await catalyst.auth.signinWithJwt(() => {
+                      return new Promise((resolve) => {
+                        resolve({
+                          client_id: data.client_id || catalystClientId,
+                          scopes: data.scopes || "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
+                          jwt_token: data.jwt_token
+                        });
+                      });
                     });
+                  } catch (jwtErr) {
+                    console.warn("Catalyst signinWithJwt notice:", jwtErr);
+                  }
+                }
+
+                // 3. Retrieve user profile details from backend /me or Catalyst to set active React user
+                let userLoaded = false;
+                try {
+                  const profileRes = await fetch('/server/ai-cios/auth/me', {
+                    credentials: 'include',
                   });
-                });
+                  if (profileRes.ok) {
+                    const text = await profileRes.text();
+                    const dbProfile = text ? JSON.parse(text) : null;
+                    if (dbProfile) {
+                      setUser({
+                        id: dbProfile.id || dbProfile.ROWID || 'google-user',
+                        name: dbProfile.name || dbProfile.username,
+                        username: dbProfile.username,
+                        email: dbProfile.username,
+                        role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
+                        district: dbProfile.district || 'Bengaluru',
+                      });
+                      userLoaded = true;
+                    }
+                  }
+                } catch (profileErr) {
+                  console.warn("Backend /me profile fetch notice:", profileErr);
+                }
 
-                // 3. Retrieve user profile details from Catalyst to set active React user
-                const isAuthenticated = await catalyst.auth.isUserAuthenticated();
-                if (isAuthenticated) {
-                  const userResponse = await catalyst.userManagement.getCurrentProjectUser();
-                  const projectUser = userResponse?.content;
-                  if (projectUser) {
-                    setUser({
-                      id: projectUser.ZUID || projectUser.user_id || 'unknown',
-                      name: projectUser.first_name
-                        ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
-                        : projectUser.email_id || 'User',
-                      username: projectUser.email_id || 'unknown_user',
-                      email: projectUser.email_id,
-                      role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
-                    });
+                if (!userLoaded && catalyst?.auth) {
+                  const isAuthenticated = await catalyst.auth.isUserAuthenticated().catch(() => false);
+                  if (isAuthenticated) {
+                    const userResponse = await catalyst.userManagement.getCurrentProjectUser().catch(() => null);
+                    const projectUser = userResponse?.content;
+                    if (projectUser) {
+                      setUser({
+                        id: projectUser.ZUID || projectUser.user_id || 'unknown',
+                        name: projectUser.first_name
+                          ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
+                          : projectUser.email_id || 'User',
+                        username: projectUser.email_id || 'unknown_user',
+                        email: projectUser.email_id,
+                        role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
+                      });
+                    }
                   }
                 }
               } catch (err: any) {
                 console.error("Authentication post-processing failed:", err);
-                alert("Login processing failed: " + err.message);
+                alert("Login processing failed: " + (err.message || 'Unknown error'));
               } finally {
                 setLoading(false);
               }

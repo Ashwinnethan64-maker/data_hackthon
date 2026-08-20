@@ -1,19 +1,33 @@
-node_modules
-.dist
-build
-coverage
-*.log
-.DS_Store
+# Environment files
 .env
 .env.local
-frontend/node_modules
+.env.*.local
+frontend/.env
+functions/ai-cios/.env
+
+# Node dependencies
+node_modules/
+frontend/node_modules/
+
+# Build output
+dist/
+build/
+.dist
 frontend/dist
+
+# Test & coverage
+coverage
+
+# Logs
+*.log
+catalyst-debug.log
+
+# OS files
+.DS_Store
 
 # Catalyst local configuration and emulator build files
 .catalystrc
 .build/
-frontend/.env
-catalyst-debug.log
 
 # TypeScript build cache
 *.tsbuildinfo
@@ -25,5 +39,3 @@ vite.config.d.ts
 
 # Local scratch directories
 scratch/
-
-

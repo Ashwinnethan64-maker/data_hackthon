@@ -3,6 +3,10 @@
 	"version": "1.0.0",
 	"main": "index.js",
 	"author": "ashwinnethan07@gmail.com",
+	"scripts": {
+		"start": "node index.js",
+		"dev": "node index.js"
+	},
 	"dependencies": {
 		"bcryptjs": "^3.0.3",
 		"dotenv": "^17.4.2",

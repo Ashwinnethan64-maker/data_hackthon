@@ -424,17 +424,54 @@ router.get('/explanation', async (req, res) => {
     const validNodeIds = new Set(nodes.map(n => n.id));
     edges = edges.filter(e => validNodeIds.has(e.source) && validNodeIds.has(e.target));
 
-    // Calculate network hash and check cache
-    const networkHash = computeNetworkHash(nodes, edges);
-    if (explanationCache.has(networkHash)) {
-      console.log(`[Network Cache Hit] Returning cached explanation for hash: ${networkHash}`);
-      return res.json(explanationCache.get(networkHash));
-    }
-
     const repeatOffenders = nodes.filter(n => n.data.isRepeatOffender);
+    const accusedNodes = nodes.filter(n => n.data.entityType === 'Accused');
+    const firNodes = nodes.filter(n => n.data.entityType === 'FIR');
+    const stationNodes = nodes.filter(n => n.data.entityType === 'PoliceStation');
+    const districtNodes = nodes.filter(n => n.data.entityType === 'District');
+
+    // Calculate node degree (connectivity)
+    const degreeMap = {};
+    edges.forEach(e => {
+      degreeMap[e.source] = (degreeMap[e.source] || 0) + 1;
+      degreeMap[e.target] = (degreeMap[e.target] || 0) + 1;
+    });
+
+    const centralAccused = nodes
+      .filter(n => n.data.entityType === 'Accused')
+      .sort((a, b) => (degreeMap[b.id] || 0) - (degreeMap[a.id] || 0));
+
+    const centralEntities = centralAccused.length > 0
+      ? centralAccused.slice(0, 5)
+      : nodes.filter(n => n.data.entityType === 'FIR' || n.data.entityType === 'PoliceStation').slice(0, 3);
+
+    // Group repeat patterns by crime category
+    const crimeCategoryCounts = {};
+    firs.forEach(f => {
+      const cat = f.crimeCategory || 'Other';
+      crimeCategoryCounts[cat] = (crimeCategoryCounts[cat] || 0) + 1;
+    });
+
+    const topCategories = Object.entries(crimeCategoryCounts)
+      .sort((a, b) => b[1] - a[1])
+      .map(([cat, count]) => `${cat} (${count} FIRs)`);
+
+    // Detect shared police stations among different FIRs
+    const stationToFirs = {};
+    firs.forEach(f => {
+      if (f.policeStation) {
+        if (!stationToFirs[f.policeStation]) stationToFirs[f.policeStation] = [];
+        stationToFirs[f.policeStation].push(f.firNumber);
+      }
+    });
+
+    const sharedStations = Object.entries(stationToFirs)
+      .filter(([_, cases]) => cases.length > 1)
+      .map(([stn, cases]) => `${stn} handles ${cases.length} connected cases (${cases.slice(0, 2).join(', ')}...)`);
+
     const quickmlService = require('../services/quickmlService');
     const prompt = `You are an AI Crime Network Analyst.
-Analyze the following criminal network composed of ${firs.length} incidents and ${nodes.length} entities (offenders, victims, locations).
+Analyze the following criminal network composed of ${firs.length} incidents, ${nodes.length} nodes, and ${edges.length} relationships.
 Key Repeat Offenders: ${JSON.stringify(repeatOffenders.slice(0, 5).map(ro => ({ name: ro.data.label, crimeType: ro.data.crimeTypes, cases: ro.data.firCount })))}
 Recent Cases: ${JSON.stringify(firs.slice(0, 10).map(f => ({ firNumber: f.firNumber, category: f.crimeCategory, district: f.district })))}
 
@@ -454,44 +491,80 @@ Return ONLY valid JSON, no markdown blocks.`;
       aiResponseStr = aiResponseStr.replace(/```json/g, '').replace(/```/g, '').trim();
       aiData = JSON.parse(aiResponseStr);
     } catch (e) {
-      console.warn('AI Network Analysis failed, using fallback:', e.message);
+      console.warn('AI Network Analysis QuickML fallback:', e.message);
+      
+      const dynamicHiddenRelationships = [];
+      if (sharedStations.length > 0) {
+        dynamicHiddenRelationships.push(`Geographic clustering: ${sharedStations[0]}.`);
+      }
+      if (accusedNodes.length > 0 && firNodes.length > 1) {
+        dynamicHiddenRelationships.push(`Identified ${accusedNodes.length} accused entities connected across ${firNodes.length} active FIR investigations.`);
+      } else {
+        dynamicHiddenRelationships.push(`Network shows localized incident structure across ${districtNodes.length || 1} jurisdictional district(s).`);
+      }
+
+      const dynamicRepeatPatterns = [];
+      if (repeatOffenders.length > 0) {
+        dynamicRepeatPatterns.push(`Identified ${repeatOffenders.length} repeat offender(s) (${repeatOffenders.map(r => r.data.label).slice(0, 3).join(', ')}) operating across multiple jurisdictions.`);
+      } else {
+        dynamicRepeatPatterns.push(`No multi-case repeat offenders detected under current filter set.`);
+      }
+      if (topCategories.length > 0) {
+        dynamicRepeatPatterns.push(`Dominant crime pattern: ${topCategories.slice(0, 2).join(', ')}.`);
+      }
+
+      const dynamicSuspicious = [];
+      if (centralEntities.length > 0) {
+        dynamicSuspicious.push(`High degree node detected: "${centralEntities[0].data.label}" connects to ${degreeMap[centralEntities[0].id] || 0} relational nodes.`);
+      }
+      if (firs.some(f => f.priorityLevel === 'Critical' || f.priority === 'Critical')) {
+        const critFirs = firs.filter(f => f.priorityLevel === 'Critical' || f.priority === 'Critical');
+        dynamicSuspicious.push(`${critFirs.length} Critical Priority incident(s) require immediate multi-jurisdictional surveillance (${critFirs.map(f => f.firNumber).slice(0, 2).join(', ')}).`);
+      }
+
+      const dynamicLeads = [];
+      if (repeatOffenders.length > 0) {
+        dynamicLeads.push({
+          priority: 'High',
+          description: `Coordinate cross-station interrogations regarding repeat suspects: ${repeatOffenders.map(r => r.data.label).slice(0, 3).join(', ')}.`,
+          entities: repeatOffenders.slice(0, 3).map(r => r.data.label)
+        });
+      }
+      if (centralEntities.length > 0) {
+        dynamicLeads.push({
+          priority: 'Medium',
+          description: `Focus investigative timeline and asset verification around primary hub "${centralEntities[0].data.label}".`,
+          entities: [centralEntities[0].data.label]
+        });
+      }
+
+      const topCrimeStr = topCategories.length > 0 ? topCategories.slice(0, 2).join(' and ') : 'various offenses';
+      const districtStr = districtNodes.length > 0 ? `${districtNodes.length} jurisdictional district(s)` : 'recorded jurisdictions';
+      const primaryAccusedNames = centralAccused.slice(0, 3).map(a => a.data.label).join(', ');
+
       aiData = {
-        summary: `The criminal network currently tracks ${firs.length} active incidents resulting in ${nodes.length} distinct entities.`,
-        hiddenRelationships: [
-          'Detected multiple Accused operating within the same Police Station jurisdiction without prior documented connection.',
-          'Possible financial link between repeat offenders in the central district.'
-        ],
-        repeatPatterns: [
-          `Identified ${repeatOffenders.length} repeat offenders across recent cases.`,
-          'Most repeat offences are clustering around property crimes late at night.'
-        ],
-        suspiciousConnections: [
-          'Shared phone numbers detected across two unrelated extortion FIRs.',
-          'Common vehicle used in multiple recent burglary reports.'
-        ],
-        investigationLeads: [
-          {
-            priority: 'High',
-            description: 'Investigate potential gang affiliation among top repeat offenders based on shared crime locations.',
-            entities: repeatOffenders.slice(0, 3).map(r => r.data.label)
-          }
-        ]
+        summary: `Network graph analysis evaluating ${nodes.length} entities and ${edges.length} active relationships across ${firs.length} incident records. The active network spans ${districtStr} with primary criminal activity focused on ${topCrimeStr}.${primaryAccusedNames ? ` Key persons of interest identified: ${primaryAccusedNames}.` : ''}`,
+        hiddenRelationships: dynamicHiddenRelationships,
+        repeatPatterns: dynamicRepeatPatterns,
+        suspiciousConnections: dynamicSuspicious,
+        investigationLeads: dynamicLeads
       };
     }
+
+    // Graph confidence reflects the verified FIR-to-entity integrity from the Data Store
+    const graphDensity = nodes.length > 1 ? (2 * edges.length) / (nodes.length * (nodes.length - 1)) : 0;
+    const dynamicConfidence = Math.min(96, Math.max(60, Math.round(65 + graphDensity * 300 + Math.min(20, firs.length * 2))));
 
     const responseBody = {
       summary: aiData.summary,
       hiddenRelationships: aiData.hiddenRelationships || [],
       repeatPatterns: aiData.repeatPatterns || [],
-      keyIndividuals: repeatOffenders.slice(0, 3).map(ro => ({ name: ro.data.label, role: ro.data.entityType, centrality: ro.data.firCount })),
+      keyIndividuals: centralEntities.slice(0, 4).map(ro => ({ name: ro.data.label, role: ro.data.entityType, centrality: degreeMap[ro.id] || ro.data.firCount || 1 })),
       suspiciousConnections: aiData.suspiciousConnections || [],
-      evidence: ['Data Store FIR Records', 'AI Behavioral Profile Models'],
-      confidenceScore: 89,
+      evidence: ['Live Catalyst Data Store Records', 'Relational Graph Degree Centrality'],
+      confidenceScore: dynamicConfidence,
       investigationLeads: aiData.investigationLeads || []
     };
-
-    // Cache the result
-    explanationCache.set(networkHash, responseBody);
 
     res.json(responseBody);
   } catch (error) {

@@ -1,174 +1,79 @@
 const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
+const {
+  parseJSON,
+  detectLanguage,
+  classifyIntent,
+  extractFiltersAndQuery,
+  generateGroundedResponse
+} = require('../services/aiIntelligenceEngine');
 
 const HISTORY_TABLE = 'ai_history';
 const FIRS_TABLE = 'firs';
 
-// Safely parse JSON properties from Catalyst string fields if needed
-function parseJSONField(field) {
-  if (typeof field === 'string') {
-    try {
-      return JSON.parse(field);
-    } catch {
-      return field;
-    }
-  }
-  return field;
-}
-
-const KANNADA_TRANSLATIONS = {
-  summaryBase: 'ನಾನು ವಿಚಾರಣೆಗೆ ಹೊಂದಾಣಿಕೆಯಾಗುವ {count} ಪ್ರಕರಣ(ಗಳನ್ನು) ಕಂಡುಕೊಂಡಿದ್ದೇನೆ.',
-  strongestSignal: ' ಪ್ರಮುಖ ಅಂಶವೆಂದರೆ {district} ನಲ್ಲಿ {crime} ಚಟುವಟಿಕೆ. ಪುರಾವೆಗಳು ಪ್ರಸ್ತುತ ದಾಖಲೆಯನ್ನು ಸಮೀಪದ ಘಟನೆಗಳಿಗೆ ಸಂಪರ್ಕಿಸುತ್ತವೆ.',
-  noResults: 'ನಿಮ್ಮ ಹುಡುಕಾಟಕ್ಕೆ ಹೊಂದಾಣಿಕೆಯಾಗುವ ಯಾವುದೇ ಪ್ರಕರಣಗಳು ಕಂಡುಬಂದಿಲ್ಲ.',
-  suggestion1: 'ಅದೇ ಠಾಣೆಯ ಸಂಬಂಧಿತ ಪ್ರಕರಣಗಳನ್ನು ತೋರಿಸಿ',
-  suggestion2: 'ಆರೋಪಿಗಳ ಸಂಪರ್ಕಗಳನ್ನು ವಿವರಿಸಿ',
-  suggestion3: 'ತನಿಖಾ ವರದಿಯನ್ನು ರಚಿಸಿ',
-  suggestion4: 'ಅನ್ವಯವಾಗುವ ಕಾನೂನು ವಿಭಾಗಗಳನ್ನು ಪಟ್ಟಿ ಮಾಡಿ',
-  action1: 'ಸಮಾನ ಪ್ರಕರಣ ದಾಖಲೆಗಳನ್ನು ತೆರೆಯಿರಿ',
-  action2: 'ಸಾಕ್ಷಿಗಳು ಮತ್ತು ಪುರಾವೆಗಳ ಟಿಪ್ಪಣಿಗಳನ್ನು ಪರಿಶೀಲಿಸಿ',
-  action3: 'ಈ ಪ್ರತಿಕ್ರಿಯೆಯನ್ನು PDF ಆಗಿ ರಫ್ತು ಮಾಡಿ'
-};
-
-// POST chat analysis (RAG pipeline)
+// POST chat analysis (Strict Intent-Driven RAG Pipeline)
 router.post('/chat', async (req, res) => {
   try {
     const { query = '', messages = [], context = {}, language = 'en' } = req.body;
-    const lowerQuery = query ? query.toLowerCase() : '';
+    const cleanQuery = query ? query.trim() : '';
 
-    // Helper to check if text contains Kannada script
-    const hasKannadaScript = /[\u0C80-\u0CFF]/.test(query);
-    const isKannada = language === 'kn' || hasKannadaScript;
+    // 1. Language & Intent Detection
+    const detectedLang = detectLanguage(cleanQuery, language);
+    const intent = classifyIntent(cleanQuery, context);
 
-    // Intent Detection — map keywords (English & Kannada) to actual crimeCategory values in the DB
-    const CRIME_MAP = {
-      burglary: 'Burglary',
-      robbery: 'Burglary',
-      theft: 'Burglary',
-      'ಕಳುವು': 'Burglary',
-      'ದರೋಡೆ': 'Burglary',
-      'ಮನೆಗಳ್ಳತನ': 'Burglary',
-      dharode: 'Burglary',
-      cyber: 'Cybercrime',
-      hacking: 'Cybercrime',
-      phishing: 'Cybercrime',
-      'ಸೈಬರ್': 'Cybercrime',
-      'ಹ್ಯಾಕಿಂಗ್': 'Cybercrime',
-      'ಫಿಶಿಂಗ್': 'Cybercrime',
-      fraud: 'Fraud',
-      cheating: 'Fraud',
-      forgery: 'Fraud',
-      'ವಂಚನೆ': 'Fraud',
-      'ಫ್ರಾಡ್': 'Fraud',
-      'ನಕಲಿ': 'Fraud',
-      drug: 'Drug Trafficking',
-      narcotic: 'Drug Trafficking',
-      ndps: 'Drug Trafficking',
-      'ಮಾದಕ': 'Drug Trafficking',
-      'ಗಾಂಜಾ': 'Drug Trafficking',
-      'ಡ್ರಗ್ಸ್': 'Drug Trafficking',
-      riot: 'Rioting',
-      rioting: 'Rioting',
-      'ಕೋಲಾಹಲ': 'Rioting',
-      'ಗಲಭೆ': 'Rioting',
-      extortion: 'Extortion',
-      blackmail: 'Extortion',
-      'ಬೆದರಿಕೆ': 'Extortion',
-      'ಸುಲಿಗೆ': 'Extortion',
-      assault: 'Assault',
-      hurt: 'Assault',
-      'ಹಲ್ಲೆ': 'Assault',
-      'ಹೊಡೆದಾಟ': 'Assault'
-    };
+    // 2. ONLY Query Database if the intent actually requires crime/FIR records
+    const requiresCrimeData = [
+      'crime_search',
+      'count',
+      'highest_risk',
+      'case_details',
+      'repeat_offenders',
+      'translate'
+    ].includes(intent.type);
 
-    let crime = context.crime;
-    for (const [keyword, category] of Object.entries(CRIME_MAP)) {
-      if (lowerQuery.includes(keyword)) {
-        crime = category;
-        break;
-      }
-    }
-    
-    let district = lowerQuery.includes('mysuru') || lowerQuery.includes('ಮೈಸೂರು') ? 'Mysuru'
-                 : lowerQuery.includes('bengaluru') || lowerQuery.includes('ಬೆಂಗಳೂರು') ? 'Bengaluru'
-                 : lowerQuery.includes('mangaluru') || lowerQuery.includes('ಮಂಗಳೂರು') ? 'Mangaluru'
-                 : lowerQuery.includes('dharwad') || lowerQuery.includes('ಧಾರವಾಡ') ? 'Dharwad'
-                 : lowerQuery.includes('belagavi') || lowerQuery.includes('ಬೆಳಗಾವಿ') ? 'Belagavi'
-                 : lowerQuery.includes('kalaburagi') || lowerQuery.includes('ಕಲಬುರಗಿ') ? 'Kalaburagi'
-                 : lowerQuery.includes('dakshina kannada') || lowerQuery.includes('ದಕ್ಷಿಣ ಕನ್ನಡ') ? 'Dakshina Kannada'
-                 : lowerQuery.includes('hubballi') || lowerQuery.includes('ಹುಬ್ಬಳ್ಳಿ') ? 'Hubballi-Dharwad'
-                 : context.district;
+    let allFirs = [];
+    let filteredFirs = [];
+    let updatedContext = { ...context };
 
-    const isRepeat = lowerQuery.includes('repeat') || lowerQuery.includes('offender') || lowerQuery.includes('ಪುನರಾವರ್ತಿತ') || lowerQuery.includes('ಖದೀಮ');
-
-    const status = lowerQuery.includes('solved') || lowerQuery.includes('closed') || lowerQuery.includes('ಮುಚ್ಚಲಾಗಿದೆ') || lowerQuery.includes('ಪೂರ್ಣಗೊಂಡಿದೆ') ? 'Closed'
-                 : lowerQuery.includes('pending') || lowerQuery.includes('unresolved') || lowerQuery.includes('open') || lowerQuery.includes('ಬಾಕಿ') || lowerQuery.includes('ತೆರೆದ') ? 'Open'
-                 : context.status;
-
-    // RAG Retrieval
-    let allFirs = await dbService.getAllRows(req, FIRS_TABLE);
-    let filtered = allFirs;
-    
-    // 1. Check if the query refers to a specific FIR number in our database
-    const targetCase = allFirs.find(c => c.firNumber && lowerQuery.includes(c.firNumber.toLowerCase()));
-    if (targetCase) {
-      // Prioritize the target case, and pull related cases in the same district/station for comparison
-      const related = allFirs.filter(c => c.firNumber !== targetCase.firNumber && 
-        (c.policeStation === targetCase.policeStation || c.district === targetCase.district)
-      );
-      filtered = [targetCase, ...related];
-    } else {
-      // 2. Otherwise apply semantic/intent filtering keywords
-      if (crime) filtered = filtered.filter(c => c.crimeCategory && c.crimeCategory.toLowerCase().includes(crime.toLowerCase()));
-      if (district) filtered = filtered.filter(c => c.district && c.district.toLowerCase().includes(district.toLowerCase()));
-      if (status) {
-        if (status === 'Closed') filtered = filtered.filter(c => c.status === 'Closed');
-        else filtered = filtered.filter(c => c.status !== 'Closed');
-      }
+    if (requiresCrimeData) {
+      allFirs = await dbService.getAllRows(req, FIRS_TABLE);
+      const extracted = extractFiltersAndQuery(allFirs, cleanQuery, context);
+      filteredFirs = extracted.filteredFirs;
+      updatedContext = extracted.context;
     }
 
-    if (isRepeat) {
-      // Find repeat offenders
-      const offendersMap = new Map();
-      filtered.forEach(f => {
-        let accused = [];
-        try { accused = typeof f.accused === 'string' ? JSON.parse(f.accused) : (f.accused || []); } catch(e){}
-        accused.forEach(a => {
-          offendersMap.set(a.name, (offendersMap.get(a.name) || 0) + 1);
-        });
-      });
-      const repeatNames = Array.from(offendersMap.entries()).filter(e => e[1] > 1).map(e => e[0]);
-      filtered = filtered.filter(f => {
-        let accused = [];
-        try { accused = typeof f.accused === 'string' ? JSON.parse(f.accused) : (f.accused || []); } catch(e){}
-        return accused.some(a => repeatNames.includes(a.name));
-      });
-    }
+    // 3. Generate Grounded AI Response
+    let groundedResult = generateGroundedResponse(
+      intent,
+      cleanQuery,
+      filteredFirs,
+      allFirs,
+      detectedLang,
+      updatedContext,
+      messages
+    );
 
-    // Build Context-Aware AI Response
-    let summary = '';
-    const primaryCase = filtered[0];
+    // 4. If QuickML is configured, enhance ONLY genuine crime investigation searches
+    if (requiresCrimeData && intent.type === 'crime_search') {
+      try {
+        const quickmlService = require('../services/quickmlService');
+        const isKn = detectedLang === 'kn' || detectedLang === 'mixed';
 
-    // Try utilizing Catalyst QuickML GLM serving
-    try {
-      const quickmlService = require('../services/quickmlService');
-      
-      // Build conversational history memory
-      const conversationMemory = messages.slice(-4).map(msg => ({
-        role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
-        content: msg.content
-      }));
+        const conversationMemory = messages.slice(-4).map(msg => ({
+          role: msg.role === 'assistant' ? 'assistant' : msg.role === 'system' ? 'system' : 'user',
+          content: msg.content
+        }));
 
-      const systemPrompt = `You are an AI Crime Intelligence Assistant for the Karnataka State Police. 
-Analyze the provided cases, extract evidence, detect suspect connections, and answer the user's query.
-Be extremely concise, professional, and factual. Cite the FIR numbers when referencing cases.
-Do not output any internal reasoning, draft thinking, or step-by-step chain-of-thought analysis. Output ONLY the final response.
-${isKannada ? 'CRITICAL REQUIREMENT: The output MUST be written entirely in clean, fluent, natural, and formal Kannada (ಕನ್ನಡ ಭಾಷೆಯಲ್ಲಿ ಉತ್ನರಿಸಿ). Translate all analysis, summaries, and recommendations into Kannada script.' : ''}`;
+        const systemPrompt = `You are an AI Crime Intelligence Assistant for the Karnataka State Police.
+Analyze the provided live case records, extract evidence, detect suspect connections, and answer the investigator's question.
+Cite exact FIR numbers, police stations, and districts from the context. Do not invent fictitious case numbers.
+${isKn ? 'CRITICAL: Output MUST be written in fluent, formal Kannada (ಕನ್ನಡ ಭಾಷೆಯಲ್ಲಿ ಉತ್ತರಿಸಿ).' : 'Output MUST be concise, professional, and directly answer the query in English.'}`;
 
-      const userPrompt = `User Query: "${query}"
-Language Mode: ${isKannada ? 'Kannada (ಕನ್ನಡ)' : 'English'}
-Retrieved Case Context:
-${JSON.stringify(filtered.slice(0, 3).map(c => ({
+        const userPrompt = `User Query: "${cleanQuery}"
+Intent: ${intent.type}
+Retrieved Live Database Cases (${filteredFirs.length} matches):
+${JSON.stringify(filteredFirs.slice(0, 4).map(c => ({
   firNumber: c.firNumber,
   crimeCategory: c.crimeCategory,
   description: c.description,
@@ -176,111 +81,40 @@ ${JSON.stringify(filtered.slice(0, 3).map(c => ({
   policeStation: c.policeStation,
   incidentDate: c.incidentDate,
   status: c.status,
-  priority: c.priorityLevel || c.priority || 'Medium',
-  applicableActs: parseJSONField(c.applicableActs) || [],
-  victims: parseJSONField(c.victims) || [],
-  accused: parseJSONField(c.accused) || [],
-  evidence: parseJSONField(c.evidence) || [],
-  timeline: parseJSONField(c.timeline) || []
+  priority: c.priorityLevel || c.priority,
+  accused: parseJSON(c.accused, []),
+  evidence: parseJSON(c.evidence, []),
+  applicableActs: parseJSON(c.applicableActs, [])
 })), null, 2)}
 
-Provide a concise response in ${isKannada ? 'Kannada (ಕನ್ನಡ)' : 'English'} answering the user query.`;
+Provide a concise, direct response answering the user query.`;
 
-      const messagesPayload = [
-        { role: 'system', content: systemPrompt },
-        ...conversationMemory,
-        { role: 'user', content: userPrompt }
-      ];
+        const messagesPayload = [
+          { role: 'system', content: systemPrompt },
+          ...conversationMemory,
+          { role: 'user', content: userPrompt }
+        ];
 
-      summary = await quickmlService.chatWithGLM(req, messagesPayload);
-    } catch (error) {
-      console.warn('[WARN] QuickML GLM query failed, using rule-based fallback:', error.message);
-
-      if (filtered.length === 0) {
-        summary = isKannada ? KANNADA_TRANSLATIONS.noResults : 'I could not find any matching cases based on your query.';
-      } else {
-        let caseDesc = primaryCase.crimeCategory ? primaryCase.crimeCategory.toLowerCase() : 'unknown';
-        let distDesc = primaryCase.district || 'the region';
-        
-        if (isKannada) {
-          let sumBase = KANNADA_TRANSLATIONS.summaryBase.replace('{count}', filtered.length);
-          let signal = KANNADA_TRANSLATIONS.strongestSignal.replace('{district}', distDesc).replace('{crime}', caseDesc);
-          summary = sumBase + signal;
-        } else {
-          summary = `I found ${filtered.length} matching case${filtered.length === 1 ? '' : 's'}. `;
-          if (isRepeat) {
-            summary += `There is evidence of repeat offenders operating in this dataset. `;
-          } else {
-            summary += `The strongest signal is ${caseDesc} activity in ${distDesc}, with evidence linking the current records to nearby incidents. `;
-          }
-          if (messages.length > 2) {
-            summary += `Following up on our earlier conversation, these matches refine the previous search.`;
-          }
+        const aiSummary = await quickmlService.chatWithGLM(req, messagesPayload);
+        if (aiSummary && aiSummary.trim()) {
+          groundedResult.summary = aiSummary;
         }
+      } catch (err) {
+        // Fallback already prepared in groundedResult
       }
     }
-
-    // Prepare Evidence & Explanations
-    let evidenceItems = [];
-    let acts = [];
-    if (primaryCase) {
-      try { evidenceItems = typeof primaryCase.evidence === 'string' ? JSON.parse(primaryCase.evidence) : (primaryCase.evidence || []); } catch(e){}
-      try { acts = typeof primaryCase.applicableActs === 'string' ? JSON.parse(primaryCase.applicableActs) : (primaryCase.applicableActs || []); } catch(e){}
-      
-      if (evidenceItems.length === 0 && primaryCase.description) {
-        evidenceItems.push({ type: 'Statement', description: primaryCase.description.substring(0, 50) + '...' });
-      }
-    }
-
-    // Map evidence items to expected frontend format: { label, value, source }
-    const formattedEvidence = evidenceItems.map(item => ({
-      label: item.label || item.type || 'Evidence Log',
-      value: item.value || item.description || 'Verified evidence log record.',
-      source: item.source || `Case ${primaryCase.firNumber || 'Record'}`
-    }));
-
-    const confidence = filtered.length > 0 ? (lowerQuery.includes('summarize') ? 95 : 88) : 50;
 
     const responsePayload = {
-      summary,
-      evidence: formattedEvidence,
-      confidence,
-      relatedCases: filtered.slice(0, 5).map(c => ({
-        firNumber: c.firNumber,
-        crime: c.crimeCategory,
-        district: c.district,
-        station: c.policeStation,
-        status: c.status
-      })),
-      investigationTimeline: primaryCase ? [
-        { title: 'FIR Registered', time: primaryCase.incidentDate },
-        { title: 'Evidence Collected', time: 'Ongoing' }
-      ] : [],
-      suggestedQuestions: isKannada ? [
-        KANNADA_TRANSLATIONS.suggestion1, KANNADA_TRANSLATIONS.suggestion2, KANNADA_TRANSLATIONS.suggestion3, KANNADA_TRANSLATIONS.suggestion4
-      ] : [
-        'Show related cases from the same station',
-        'Explain the suspect connections',
-        'Generate investigation report',
-        'List applicable legal sections'
-      ],
-      recommendedActions: isKannada ? [
-        KANNADA_TRANSLATIONS.action1, KANNADA_TRANSLATIONS.action2, KANNADA_TRANSLATIONS.action3
-      ] : [
-        'Open similar case records',
-        'Review witness and evidence notes',
-        'Export the response as PDF'
-      ],
-      applicableActs: acts,
-      updatedContext: { crime, district, status }
+      ...groundedResult,
+      updatedContext
     };
 
-    // Save conversation step to history
-    await dbService.insertRow(req, HISTORY_TABLE, { 
-      query: lowerQuery, 
-      response: summary,
-      language: language
-    }).catch(err => console.error("History save failed", err));
+    // Save conversation step to history asynchronously
+    dbService.insertRow(req, HISTORY_TABLE, {
+      query: cleanQuery,
+      response: responsePayload.summary,
+      language: detectedLang
+    }).catch(err => console.error("History save failed:", err.message));
 
     res.json(responsePayload);
   } catch (error) {

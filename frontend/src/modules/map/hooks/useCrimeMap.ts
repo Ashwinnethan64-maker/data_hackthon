@@ -48,6 +48,7 @@ export function useCrimeMap() {
 
   const analyzeCurrentArea = useCallback(async () => {
     setIsAnalyzing(true);
+    setAreaAnalysis(null);
     setAnalysisError(null);
     try {
       // Pass currently filtered incidents

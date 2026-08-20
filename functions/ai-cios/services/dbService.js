@@ -88,12 +88,17 @@ function getApp(req) {
     return catalyst.initialize(req);
   } catch (e) {
     // Standalone / local script fallback
-    if (process.env.CATALYST_PROJECT_ID || process.env.PROJECT_ID) {
-      return catalyst.initializeApp({
-        project_id: process.env.CATALYST_PROJECT_ID || process.env.PROJECT_ID,
-        project_key: process.env.CATALYST_PROJECT_KEY || process.env.PROJECT_KEY,
-        environment: process.env.CATALYST_ENVIRONMENT || 'Development'
-      });
+    if ((process.env.CATALYST_PROJECT_ID || process.env.PROJECT_ID) && process.env.CATALYST_PROJECT_KEY) {
+      try {
+        return catalyst.initializeApp({
+          project_id: process.env.CATALYST_PROJECT_ID || process.env.PROJECT_ID,
+          project_key: process.env.CATALYST_PROJECT_KEY || process.env.PROJECT_KEY,
+          environment: process.env.CATALYST_ENVIRONMENT || 'Development'
+        });
+      } catch (initErr) {
+        logDebug(`[WARN] Catalyst initializeApp failed: ${initErr.message}`);
+        return null;
+      }
     }
     return null;
   }
@@ -229,6 +234,7 @@ async function deleteRow(req, tableName, rowId) {
 }
 
 module.exports = {
+  getApp,
   getAllRows,
   getRow,
   insertRow,

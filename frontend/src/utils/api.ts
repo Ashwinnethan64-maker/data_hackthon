@@ -34,16 +34,26 @@ export async function apiRequest<T = any>(
 
     clearTimeout(id);
 
+    let data: any = null;
+    const text = await response.text();
+    if (text) {
+      try {
+        data = JSON.parse(text);
+      } catch {
+        data = text;
+      }
+    }
+
     if (!response.ok) {
       if (response.status === 401) {
         // Global handler for unauthorized
         window.dispatchEvent(new CustomEvent('unauthorized_error'));
       }
-      const errorData = await response.json().catch(() => ({}));
-      throw new Error(errorData.error || `HTTP error! Status: ${response.status}`);
+      const errorMessage = (data && typeof data === 'object' && data.error) ? data.error : (typeof data === 'string' && data ? data : `HTTP error! Status: ${response.status}`);
+      throw new Error(errorMessage);
     }
 
-    return response.json() as Promise<T>;
+    return data as T;
   } catch (error: any) {
     clearTimeout(id);
     if (error.name === 'AbortError') {

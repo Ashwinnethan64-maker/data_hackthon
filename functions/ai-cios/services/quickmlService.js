@@ -34,52 +34,35 @@ async function chatWithGLM(req, messages) {
     content: m.content
   }));
 
-  // Abort the request if it takes longer than 300 seconds (5 minutes)
+  // Abort the request if it takes longer than 8 seconds to ensure responsive UX
   let controller = new AbortController();
-  let timeout = setTimeout(() => controller.abort(), 300_000);
+  let timeout = setTimeout(() => controller.abort(), 8000);
 
   let response;
-  // Attempt the request, retry up to 2 additional times (total 3 attempts)
-  let attempt = 0;
-  const maxAttempts = 3;
   try {
-    while (attempt < maxAttempts) {
-      attempt++;
-      try {
-        response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${token}`,
-            'CATALYST-ORG': orgId
-          },
-          body: JSON.stringify({
-            model: MODEL_NAME,
-            messages: glmMessages,
-            max_tokens: 2000,
-            temperature: 0.7,
-            chat_template_kwargs: {
-              enable_thinking: false
-            }
-          }),
-          signal: controller.signal
-        });
-        break; // success
-      } catch (err) {
-        if (err.name === 'AbortError' && attempt < maxAttempts) {
-          // Reset the controller and timeout for the retry
-          controller = new AbortController();
-          clearTimeout(timeout);
-          timeout = setTimeout(() => controller.abort(), 300_000);
-        } else {
-          // If the fetch was aborted due to timeout, throw a clearer error
-          if (err.name === 'AbortError') {
-            throw new Error('QuickML request timed out after 300 seconds');
-          }
-          throw err;
+    response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${token}`,
+        'CATALYST-ORG': orgId
+      },
+      body: JSON.stringify({
+        model: MODEL_NAME,
+        messages: glmMessages,
+        max_tokens: 2000,
+        temperature: 0.7,
+        chat_template_kwargs: {
+          enable_thinking: false
         }
-      }
+      }),
+      signal: controller.signal
+    });
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error('QuickML request timed out');
     }
+    throw err;
   } finally {
     clearTimeout(timeout);
   }

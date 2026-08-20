@@ -10,6 +10,8 @@ function buildQuery(filters: AnalyticsFilters): string {
   if (filters.crimeCategories.length > 0) params.append('crimeCategories', filters.crimeCategories.join(','));
   if (filters.riskLevels.length > 0) params.append('riskLevels', filters.riskLevels.join(','));
   if (filters.statuses.length > 0) params.append('statuses', filters.statuses.join(','));
+  if (filters.victimGender && filters.victimGender !== 'All') params.append('victimGender', filters.victimGender);
+  if (filters.accusedGender && filters.accusedGender !== 'All') params.append('accusedGender', filters.accusedGender);
   return params.toString();
 }
 

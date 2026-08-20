@@ -314,19 +314,46 @@ router.post('/google-login', async (req, res) => {
       console.log(`[DEBUG] Automatically registered new Google user in database: ${email}`);
     }
 
-    // Now, generate a Catalyst Custom User token
-    const catalyst = require('zcatalyst-sdk-node');
-    const app = res.locals.catalyst || catalyst.initialize(req);
-    
-    // Call generateCustomToken to get Catalyst JWT
-    const tokenResponse = await app.userManagement().generateCustomToken({
-      type: 'web',
-      user_details: {
-        email_id: email,
-        first_name: given_name || name || 'Google',
-        last_name: family_name || 'User'
+    // Now, generate a Catalyst Custom User token or local fallback token
+    let tokenResponse = null;
+    let clientId = process.env.CATALYST_ORG_ID || process.env.VITE_CATALYST_CLIENT_ID || '';
+
+    try {
+      const app = dbService.getApp(req);
+      if (app && app.userManagement) {
+        tokenResponse = await app.userManagement().generateCustomToken({
+          type: 'web',
+          user_details: {
+            email_id: email,
+            first_name: given_name || name || 'Google',
+            last_name: family_name || 'User'
+          }
+        });
+        clientId = app.config?.zaid || app.config?.client_id || clientId;
       }
-    });
+    } catch (catErr) {
+      console.warn('[WARN] Catalyst generateCustomToken failed, using local session fallback:', catErr.message);
+    }
+
+    // Fallback if standalone local node server without catalyst emulator:
+    if (!tokenResponse) {
+      const token = jwt.sign(
+        {
+          id: user.ROWID || 'google-user',
+          username: email,
+          name: name || `${given_name || ''} ${family_name || ''}`.trim() || email.split('@')[0],
+          role: user.role || 'investigator',
+          district: user.district || 'Bengaluru'
+        },
+        JWT_SECRET,
+        { expiresIn: '8h' }
+      );
+      tokenResponse = {
+        jwt_token: token,
+        client_id: clientId || 'local-client-id',
+        scopes: "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE"
+      };
+    }
 
     // Set a readable cookie with the authenticated user's email so the backend
     // can identify the Google-authenticated user on subsequent requests/page refreshes.
@@ -336,25 +363,36 @@ router.post('/google-login', async (req, res) => {
       maxAge: 8 * 60 * 60 * 1000 // 8 hours
     });
 
+    // Also set token cookie for local authentication fallback
+    const fallbackToken = typeof tokenResponse === 'string' ? tokenResponse : (tokenResponse.jwt_token || tokenResponse.token);
+    if (fallbackToken) {
+      res.cookie('token', fallbackToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 8 * 60 * 60 * 1000
+      });
+    }
+
     // If it's a string, wrap it. If it's an object, send it directly.
     if (typeof tokenResponse === 'string') {
       res.json({
         success: true,
         jwt_token: tokenResponse,
-        client_id: app.config?.zaid || app.config?.client_id
+        client_id: clientId
       });
     } else {
       res.json({
         success: true,
         jwt_token: tokenResponse.jwt_token || tokenResponse.token || tokenResponse,
-        client_id: tokenResponse.client_id,
+        client_id: tokenResponse.client_id || clientId,
         scopes: tokenResponse.scopes
       });
     }
 
   } catch (error) {
     console.error('Google login error:', error);
-    res.status(500).json({ error: 'Google login failed due to server error' });
+    res.status(500).json({ error: error.message || 'Google login failed due to server error' });
   }
 });
 
