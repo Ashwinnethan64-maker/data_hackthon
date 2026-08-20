@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { X, FileDown, CheckCircle2 } from 'lucide-react';
+import { FileDown, CheckCircle2 } from 'lucide-react';
 import { jsPDF } from 'jspdf';
 import { SharedModal } from './SharedModal';
 interface ExportDialogProps {

@@ -14,17 +14,21 @@ export default defineConfig({
           if (req.url && req.url.includes('/__catalyst/sdk/init.js')) {
             try {
               const response = await fetch('http://127.0.0.1:3000/__catalyst/sdk/init.js');
-              let content = await response.text();
-              // Replace auth_domain with proxy domain
-              content = content.replace(
-                /auth_domain\s*:\s*["']https:\/\/accounts\.zohoportal\.in["']/,
-                'auth_domain : window.location.origin + "/accounts-proxy"'
-              );
+              if (response.ok) {
+                let content = await response.text();
+                content = content.replace(
+                  /auth_domain\s*:\s*["']https:\/\/accounts\.zohoportal\.in["']/,
+                  'auth_domain : window.location.origin + "/accounts-proxy"'
+                );
+                res.setHeader('Content-Type', 'application/javascript');
+                res.end(content);
+                return;
+              }
+            } catch (_err) {
+              // Catalyst emulator (port 3000) not active; fallback stub
               res.setHeader('Content-Type', 'application/javascript');
-              res.end(content);
+              res.end('/* Catalyst SDK stub when catalyst serve is not running */');
               return;
-            } catch (err) {
-              console.error('Failed to proxy/modify /__catalyst/sdk/init.js:', err);
             }
           }
           next();
@@ -49,6 +53,8 @@ export default defineConfig({
   ],
   server: {
     port: 5173,
+    host: true,
+    allowedHosts: ['.loca.lt', '.ngrok-free.dev', '.ngrok.io', 'localhost', '127.0.0.1'],
     proxy: {
       '/server/ai-cios': {
         target: 'http://127.0.0.1:3000',

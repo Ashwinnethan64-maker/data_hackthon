@@ -7,7 +7,6 @@ import { ChatMessage } from './ChatMessage';
 import { EvidencePanel } from './EvidencePanel';
 import { RelatedCases } from './RelatedCases';
 import { Card } from '../../../components/Card';
-import { Badge } from '../../../components/Badge';
 import { useAiInvestigator } from '../hooks/useAiInvestigator';
 import { ExportDialog } from './ExportDialog';
 import { Globe, Download, Layers, List, Plus } from 'lucide-react';

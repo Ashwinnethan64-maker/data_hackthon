@@ -1,6 +1,5 @@
-import { Bookmark, History, Search, Pin } from 'lucide-react';
+import { History, Pin } from 'lucide-react';
 import { Card } from '../../../components/Card';
-import { Badge } from '../../../components/Badge';
 import { cn } from '../../../utils/cn';
 import type { AiConversationThread } from '../types';
 

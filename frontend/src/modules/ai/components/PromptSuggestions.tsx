@@ -1,4 +1,3 @@
-import { Badge } from '../../../components/Badge';
 
 interface PromptSuggestionsProps {
   prompts: string[];

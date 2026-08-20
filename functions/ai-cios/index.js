@@ -20,6 +20,8 @@ app.use(express.json());
 app.use('/system', systemRouter);
 app.use('/auth', authRouter);
 
+const { errorHandler } = require('./middleware/errorHandler');
+
 // Protected routes (require valid Catalyst session)
 app.use('/cases', verifyToken, casesRouter);
 app.use('/analytics', verifyToken, analyticsRouter);
@@ -28,6 +30,9 @@ app.use('/network', verifyToken, networkRouter);
 app.use('/map', verifyToken, mapRouter);
 app.use('/reports', verifyToken, reportsRouter);
 app.use('/settings', verifyToken, settingsRouter);
+
+// Global Error Handler
+app.use(errorHandler);
 
 module.exports = app;
 

@@ -1,12 +1,11 @@
 import { useState } from 'react';
-import { useNavigate, Navigate } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Button } from '../components/Button';
 import { Card } from '../components/Card';
 import { useAuth, type UserRole } from '../store/AuthContext';
 import { BrandLogo } from '../components/common/BrandLogo';
 
 export function LoginPage() {
-  const navigate = useNavigate();
   const { loginWithGoogle, loginWithMockCredentials, loginWithProfile, user, loading } = useAuth();
   
   const [username, setUsername] = useState('');

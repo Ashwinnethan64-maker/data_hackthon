@@ -1,5 +1,5 @@
 import { motion } from 'framer-motion';
-import { Brain, Star, CheckCircle, AlertCircle } from 'lucide-react';
+import { Brain } from 'lucide-react';
 import type { AIInsight } from '../types';
 
 interface InsightCardProps {

@@ -57,7 +57,7 @@ interface EntityNodeProps extends NodeProps<NetworkNodeData> {
   onExpand?: (id: string) => void;
 }
 
-function EntityNodeInner({ id, data, selected }: EntityNodeProps) {
+function EntityNodeInner({ id: _id, data, selected }: EntityNodeProps) {
   const color = ENTITY_COLORS[data.entityType];
   const Icon = ENTITY_ICONS[data.entityType];
   const isDimmed = data.dimmed && !data.highlighted;

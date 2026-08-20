@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  Search, Calendar, ChevronDown, Layers, Flame, Satellite,
+  Search, Calendar, ChevronDown, Flame, Satellite,
   Download, BrainCircuit, Filter, X, Globe
 } from 'lucide-react';
 import clsx from 'clsx';

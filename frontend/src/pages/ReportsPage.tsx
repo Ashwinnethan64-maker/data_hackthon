@@ -96,7 +96,7 @@ export function ReportsPage() {
 
   const API_BASE = '/server/ai-cios';
 
-  const onSubmit = (data: ReportFilters) => {
+  const onSubmit = (_data: ReportFilters) => {
     // Called when form is submitted natively (e.g. hitting Enter)
   };
 

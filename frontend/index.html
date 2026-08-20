@@ -16,7 +16,7 @@
     <link rel="apple-touch-icon" sizes="256x256" href="/favicon-256x256.png" />
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <script src="https://static.zohocdn.com/catalyst/sdk/js/4.5.0/catalystWebSDK.js"></script>
-    <script src="/__catalyst/sdk/init.js"></script>
+    <script src="/__catalyst/sdk/init.js" defer onError="console.warn('Catalyst SDK init fallback')"></script>
   </head>
   <body>
     <div id="root"></div>

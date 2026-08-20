@@ -1,4 +1,4 @@
-import { BrainCircuit, Info } from 'lucide-react';
+import { BrainCircuit } from 'lucide-react';
 import { PredictionChart } from './charts/PredictionChart';
 
 interface PredictionPanelProps {

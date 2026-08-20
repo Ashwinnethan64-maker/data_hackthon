@@ -203,7 +203,7 @@ export function CaseDetailsPage() {
   const lat = record.latitude || 15.3173;
   const lng = record.longitude || 75.7139;
   const center: [number, number] = [lat, lng];
-  const currentStatusIdx = STATUS_CYCLE.indexOf(record.status);
+  const _currentStatusIdx = STATUS_CYCLE.indexOf(record.status);
 
   return (
     <div className="space-y-6">

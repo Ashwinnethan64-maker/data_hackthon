@@ -1,4 +1,4 @@
-import { Bell, Clock3, Search, Sparkles, Menu } from 'lucide-react';
+import { Clock3, Search, Sparkles, Menu } from 'lucide-react';
 import dayjs from 'dayjs';
 import { Button } from './Button';
 import { useState } from 'react';

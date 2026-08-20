@@ -85,7 +85,7 @@ export function useCaseExplorer() {
     placeholderData: (previousData) => previousData, // keep old data while fetching
   });
 
-  const cases = data?.data || [];
+  const cases = useMemo(() => data?.data || [], [data?.data]);
   const totalCount = data?.pagination?.totalRecords || 0;
   const totalPages = data?.pagination?.totalPages || 0;
 

@@ -15,7 +15,7 @@ export function useEntityDetails(selectedNodeId: string | null) {
     try {
       const result = await getEntityDetails(nodeId);
       setDetails(result);
-    } catch (e) {
+    } catch (_e) {
       setDetails(null);
     } finally {
       setIsLoading(false);

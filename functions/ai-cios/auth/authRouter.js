@@ -5,6 +5,9 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { verifyToken, JWT_SECRET } = require('../middleware/auth');
 
+const { validateBody } = require('../middleware/validate');
+const { loginSchema } = require('../types/schemas');
+
 const TABLE_NAME = 'officers';
 
 // Helper to seed a user if missing
@@ -50,7 +53,7 @@ async function ensureUserExists(req, username, password, role, customDetails = {
 }
 
 // POST login
-router.post('/login', async (req, res) => {
+router.post('/login', validateBody(loginSchema), async (req, res, next) => {
   try {
     const { username, password } = req.body;
     

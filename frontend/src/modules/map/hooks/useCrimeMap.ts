@@ -53,7 +53,7 @@ export function useCrimeMap() {
       // Pass currently filtered incidents
       const analysis = await generateAreaAnalysis(incidents);
       setAreaAnalysis(analysis);
-    } catch (err) {
+    } catch (_err) {
       setAnalysisError('Failed to analyze area.');
     } finally {
       setIsAnalyzing(false);

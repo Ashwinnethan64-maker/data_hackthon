@@ -3,6 +3,8 @@ const router = express.Router();
 const dbService = require('../services/dbService');
 const PDFDocument = require('pdfkit');
 const { verifyToken } = require('../middleware/auth');
+const { validateBody } = require('../middleware/validate');
+const { createCaseSchema, updateCaseSchema } = require('../types/schemas');
 
 const TABLE_NAME = 'firs';
 
@@ -380,12 +382,8 @@ router.get('/:id/export-pdf', async (req, res) => {
 });
 
 // POST a new case
-router.post('/', async (req, res) => {
+router.post('/', validateBody(createCaseSchema), async (req, res) => {
   try {
-    if (!req.body || Object.keys(req.body).length === 0) {
-      return res.status(400).json({ error: 'Invalid input data' });
-    }
-    
     const rowData = { ...req.body };
     if (rowData.priority) {
       rowData.priorityLevel = rowData.priority;
@@ -424,7 +422,7 @@ router.post('/', async (req, res) => {
 });
 
 // PUT update a case
-router.put('/:id', async (req, res) => {
+router.put('/:id', validateBody(updateCaseSchema), async (req, res) => {
   try {
     if (!req.body || Object.keys(req.body).length === 0) {
       return res.status(400).json({ error: 'Invalid input data' });

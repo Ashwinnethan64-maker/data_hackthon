@@ -1,5 +1,4 @@
 import type { AnalyticsFilters, CrimeCategory } from '../types';
-import { Shield, BrainCircuit, Activity, Users, Settings } from 'lucide-react';
 import clsx from 'clsx';
 
 interface AnalyticsSidebarProps {

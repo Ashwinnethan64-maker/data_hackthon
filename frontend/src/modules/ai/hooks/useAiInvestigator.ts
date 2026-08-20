@@ -115,8 +115,9 @@ export function useAiInvestigator() {
 
   // Abort any in-flight request on unmount
   useEffect(() => {
+    const currentAbort = abortRef.current;
     return () => {
-      abortRef.current?.abort();
+      currentAbort?.abort();
     };
   }, []);
 
@@ -127,6 +128,7 @@ export function useAiInvestigator() {
       // Clear navigation state so a page refresh doesn't re-trigger the query
       window.history.replaceState({}, document.title);
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const messages = messagesByThread[selectedThreadId] ?? [];
@@ -246,8 +248,8 @@ export function useAiInvestigator() {
   };
 
   const startSpeechToText = () => {
-    // @ts-ignore - SpeechRecognition is not fully typed
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    // @ts-expect-error - SpeechRecognition is not fully typed
+    const SpeechRecognition = window.SpeechRecognition || (window as unknown as { webkitSpeechRecognition: new () => unknown }).webkitSpeechRecognition;
     
     // If supported, try to use real speech recognition
     if (SpeechRecognition) {
