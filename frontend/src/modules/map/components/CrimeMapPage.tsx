@@ -41,10 +41,11 @@ export function CrimeMapPage() {
         onAnalyzeArea={analyzeCurrentArea}
         isAnalyzing={isAnalyzing}
         totalIncidents={incidents.length}
+        incidents={incidents}
       />
 
       {/* Main area: Sidebar + Map + Analysis Panel */}
-      <div className="flex flex-1 overflow-hidden relative">
+      <div className="flex flex-1 overflow-hidden relative min-h-0">
         {/* Mobile Backdrop */}
         {isSidebarOpen && (
           <div 
@@ -53,16 +54,17 @@ export function CrimeMapPage() {
           />
         )}
         
-        {/* Mobile menu toggle inside map if needed, or we just rely on toolbar if we add it there. Actually let's add a button here to open sidebar */}
+        {/* Mobile menu toggle inside map if needed */}
         <button 
           onClick={() => setIsSidebarOpen(true)}
-          className="absolute top-4 left-4 z-[500] rounded-lg border border-white/10 bg-slate-900/90 p-2.5 text-slate-300 hover:text-white lg:hidden backdrop-blur-md shadow-lg"
+          className="absolute top-4 left-4 z-[500] rounded-xl border border-white/10 bg-slate-900/90 p-2.5 text-slate-300 hover:text-white lg:hidden backdrop-blur-md shadow-lg"
+          title="Open Intelligence Layers"
         >
           <Menu className="h-5 w-5" />
         </button>
 
         {/* Left Sidebar */}
-        <div className={`transition-all duration-300 z-[1050] ${isSidebarOpen ? 'fixed inset-y-0 left-0 w-64 lg:static h-full' : 'fixed -left-64 lg:static w-0 lg:w-64 overflow-hidden h-full'}`}>
+        <div className={`transition-all duration-300 z-[1030] ${isSidebarOpen ? 'fixed inset-y-0 left-0 w-64 lg:static h-full' : 'fixed -left-64 lg:static w-0 lg:w-64 overflow-hidden h-full'}`}>
           <div className="h-full w-64">
             <MapSidebar
               filters={filters}
@@ -72,8 +74,8 @@ export function CrimeMapPage() {
           </div>
         </div>
 
-        {/* Map */}
-        <div className="flex-1 relative overflow-hidden">
+        {/* Map Container */}
+        <div className="flex-1 relative overflow-hidden h-full">
           <CrimeMap
             incidents={incidents}
             showHeatmap={showHeatmap}
@@ -83,14 +85,14 @@ export function CrimeMapPage() {
             initialCenter={initialCenter}
           />
 
-          {/* Stats overlay */}
-          <div className="absolute bottom-10 left-4 z-[800] flex gap-2">
+          {/* Incident Status Pill Overlay */}
+          <div className="absolute bottom-6 left-4 z-[800] flex gap-2">
             {[
               { label: 'Open', count: incidents.filter((i) => i.status === 'Open').length, color: 'text-red-400 bg-red-500/10 border-red-500/20' },
               { label: 'Pending', count: incidents.filter((i) => i.status === 'Pending').length, color: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' },
               { label: 'Closed', count: incidents.filter((i) => i.status === 'Closed').length, color: 'text-green-400 bg-green-500/10 border-green-500/20' },
             ].map(({ label, count, color }) => (
-              <div key={label} className={`px-3 py-1.5 rounded-lg border backdrop-blur-xl bg-slate-950/80 text-xs font-medium ${color}`}>
+              <div key={label} className={`px-3 py-1.5 rounded-xl border backdrop-blur-xl bg-slate-950/85 text-xs font-medium shadow-lg ${color}`}>
                 <span className="font-mono font-bold">{count}</span> {label}
               </div>
             ))}

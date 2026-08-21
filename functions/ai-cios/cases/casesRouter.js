@@ -237,14 +237,14 @@ router.get('/:id/export-pdf', async (req, res) => {
   try {
     const officers = await dbService.getAllRows(req, 'officers').catch(() => []);
     
-    // Find case record
+    // Find case record by ROWID or firNumber
     const recordId = req.params.id;
     let record = await dbService.getRow(req, TABLE_NAME, recordId);
     
-    if (!record || record.ROWID !== recordId) {
+    if (!record || (record.ROWID !== recordId && record.id !== recordId)) {
       // Fallback scan
       const allCases = await dbService.getAllRows(req, TABLE_NAME);
-      record = allCases.find(c => c.firNumber === recordId || c.ROWID === recordId);
+      record = allCases.find(c => c.firNumber === recordId || c.ROWID === recordId || c.id === recordId);
     }
     
     if (!record) {
@@ -261,7 +261,7 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.on('end', () => {
       const pdfBuffer = Buffer.concat(buffers);
       res.setHeader('Content-Type', 'application/pdf');
-      res.setHeader('Content-Disposition', `attachment; filename="FIR_Report_${normalized.firNumber}.pdf"`);
+      res.setHeader('Content-Disposition', `attachment; filename="FIR_Report_${normalized.firNumber || 'Case'}.pdf"`);
       res.send(pdfBuffer);
     });
     
@@ -271,22 +271,25 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(13).font('Helvetica-Bold').fillColor('#334155').text('FIRST INFORMATION REPORT (FIR)', { align: 'center' });
     doc.fontSize(9).font('Helvetica-Oblique').fillColor('#64748b').text('AI-CIOS Crime Intelligence Export', { align: 'center' });
     doc.moveDown(1);
-    doc.moveTo(50, doc.y).lineTo(545, doc.y).strokeColor('#cbd5e1').strokeWidth(1).stroke();
+    doc.strokeColor('#cbd5e1').lineWidth(1).moveTo(50, doc.y).lineTo(545, doc.y).stroke();
     doc.moveDown(1);
     
     // 2. Details Table-like layout
     const yStart = doc.y;
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('CASE METADATA', 50, yStart);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
-    doc.text(`FIR Number: ${normalized.firNumber}`, 50, yStart + 20);
-    doc.text(`Crime Type: ${normalized.crimeCategory}`, 50, yStart + 35);
-    doc.text(`District: ${normalized.district}`, 50, yStart + 50);
-    doc.text(`Police Station: ${normalized.policeStation}`, 50, yStart + 65);
+    doc.text(`FIR Number: ${normalized.firNumber || 'N/A'}`, 50, yStart + 20);
+    doc.text(`Crime Type: ${normalized.crimeCategory || 'N/A'}`, 50, yStart + 35);
+    doc.text(`District: ${normalized.district || 'N/A'}`, 50, yStart + 50);
+    doc.text(`Police Station: ${normalized.policeStation || 'N/A'}`, 50, yStart + 65);
     
-    doc.text(`Status: ${normalized.status}`, 320, yStart + 20);
-    doc.text(`Priority: ${normalized.priority}`, 320, yStart + 35);
-    doc.text(`Incident Date: ${new Date(normalized.incidentDate).toLocaleString('en-IN')}`, 320, yStart + 50);
-    doc.text(`Coordinates: ${normalized.latitude.toFixed(5)}°, ${normalized.longitude.toFixed(5)}°`, 320, yStart + 65);
+    const lat = typeof normalized.latitude === 'number' ? normalized.latitude : parseFloat(normalized.latitude) || 0;
+    const lon = typeof normalized.longitude === 'number' ? normalized.longitude : parseFloat(normalized.longitude) || 0;
+    
+    doc.text(`Status: ${normalized.status || 'Open'}`, 320, yStart + 20);
+    doc.text(`Priority: ${normalized.priority || 'Medium'}`, 320, yStart + 35);
+    doc.text(`Incident Date: ${normalized.incidentDate ? new Date(normalized.incidentDate).toLocaleString('en-IN') : 'N/A'}`, 320, yStart + 50);
+    doc.text(`Coordinates: ${lat.toFixed(5)}°, ${lon.toFixed(5)}°`, 320, yStart + 65);
     
     doc.moveDown(6.5);
     
@@ -294,8 +297,8 @@ router.get('/:id/export-pdf', async (req, res) => {
     const yOfficer = doc.y;
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('ASSIGNED INVESTIGATING OFFICER', 50, yOfficer);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
-    doc.text(`Name: ${normalized.officer.name}`, 50, yOfficer + 20);
-    doc.text(`Rank/Role: ${normalized.officer.rank}`, 320, yOfficer + 20);
+    doc.text(`Name: ${normalized.officer?.name || 'Unassigned'}`, 50, yOfficer + 20);
+    doc.text(`Rank/Role: ${normalized.officer?.rank || 'Investigator'}`, 320, yOfficer + 20);
     
     doc.moveDown(3.5);
     
@@ -303,7 +306,7 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('INCIDENT DESCRIPTION', 50);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
     doc.moveDown(0.5);
-    doc.text(normalized.description, { width: 495, align: 'justify', lineGap: 3 });
+    doc.text(normalized.description || 'No description logged.', { width: 495, align: 'justify', lineGap: 3 });
     
     doc.moveDown(1.5);
     
@@ -311,7 +314,8 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('APPLICABLE LEGAL IPC / BNS SECTIONS', 50);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
     doc.moveDown(0.5);
-    doc.text(normalized.applicableActs.join(', ') || 'None registered');
+    const acts = Array.isArray(normalized.applicableActs) ? normalized.applicableActs : [];
+    doc.text(acts.join(', ') || 'None registered');
     
     doc.moveDown(1.5);
     
@@ -320,12 +324,13 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('VICTIMS', 50, yDem);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
     let currentY = yDem + 20;
-    if (normalized.victims.length === 0) {
+    const victims = Array.isArray(normalized.victims) ? normalized.victims : [];
+    if (victims.length === 0) {
       doc.text('No victim profiles registered', 50, currentY);
       currentY += 15;
     } else {
-      normalized.victims.forEach(v => {
-        doc.text(`- ${v.name} (${v.gender}, Age ${v.age})`, 50, currentY);
+      victims.forEach(v => {
+        doc.text(`- ${v.name || 'Unknown'} (${v.gender || 'N/A'}, Age ${v.age || 'N/A'})`, 50, currentY);
         currentY += 15;
       });
     }
@@ -333,12 +338,13 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('ACCUSED / SUSPECTS', 320, yDem);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
     let currentYAcc = yDem + 20;
-    if (normalized.accused.length === 0) {
+    const accusedList = Array.isArray(normalized.accused) ? normalized.accused : [];
+    if (accusedList.length === 0) {
       doc.text('No suspects identified', 320, currentYAcc);
       currentYAcc += 15;
     } else {
-      normalized.accused.forEach(a => {
-        doc.text(`- ${a.name} (${a.gender}, Age ${a.age})${a.isRepeatOffender ? ' [REPEAT OFFENDER]' : ''}`, 320, currentYAcc);
+      accusedList.forEach(a => {
+        doc.text(`- ${a.name || 'Unknown'} (${a.gender || 'N/A'}, Age ${a.age || 'N/A'})${a.isRepeatOffender ? ' [REPEAT OFFENDER]' : ''}`, 320, currentYAcc);
         currentYAcc += 15;
       });
     }
@@ -349,11 +355,12 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('EVIDENCE EXHIBITS LOG', 50);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
     doc.moveDown(0.5);
-    if (normalized.evidence.length === 0) {
+    const evidenceList = Array.isArray(normalized.evidence) ? normalized.evidence : [];
+    if (evidenceList.length === 0) {
       doc.text('No evidence exhibits logged');
     } else {
-      normalized.evidence.forEach(ev => {
-        doc.text(`* [${ev.label}] ${ev.value} (Source: ${ev.source})`, { width: 495, lineGap: 2 });
+      evidenceList.forEach(ev => {
+        doc.text(`* [${ev.label || 'Exhibit'}] ${ev.value || ''} (Source: ${ev.source || 'Investigation'})`, { width: 495, lineGap: 2 });
         doc.moveDown(0.3);
       });
     }
@@ -364,9 +371,14 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.fontSize(11).font('Helvetica-Bold').fillColor('#0284c7').text('INVESTIGATION MILESTONES TIMELINE', 50);
     doc.font('Helvetica').fontSize(10).fillColor('#1e293b');
     doc.moveDown(0.5);
-    normalized.timeline.forEach(step => {
-      doc.text(`- [${step.time}] ${step.title} (${step.status.toUpperCase()})`);
-    });
+    const timelineList = Array.isArray(normalized.timeline) ? normalized.timeline : [];
+    if (timelineList.length === 0) {
+      doc.text('No timeline milestones recorded');
+    } else {
+      timelineList.forEach(step => {
+        doc.text(`- [${step.time || 'Date'}] ${step.title || 'Step'} (${(step.status || 'Completed').toUpperCase()})`);
+      });
+    }
     
     doc.moveDown(2);
     
@@ -377,7 +389,7 @@ router.get('/:id/export-pdf', async (req, res) => {
     doc.end();
   } catch (error) {
     console.error('Error generating PDF:', error);
-    res.status(500).json({ error: 'Failed to export case PDF' });
+    res.status(500).json({ error: 'Failed to export case PDF', details: error.message });
   }
 });
 

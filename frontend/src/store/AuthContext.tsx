@@ -9,6 +9,8 @@ export interface AuthUser {
   role: UserRole;
   email?: string;
   district?: string;
+  provider?: 'Google' | 'Database' | 'System' | 'Demo';
+  avatar?: string;
 }
 
 interface AuthContextValue {
@@ -22,17 +24,6 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
-/** Reads the mock_user cookie set during dev login and returns the parsed user, or null. */
-function parseMockUserCookie(): AuthUser | null {
-  const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
-  if (!mockCookie) return null;
-  try {
-    return JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: PropsWithChildren) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
@@ -40,83 +31,56 @@ export function AuthProvider({ children }: PropsWithChildren) {
   useEffect(() => {
     let isMounted = true;
 
-    // Check if the user is authenticated via Catalyst or custom session
-    const checkCatalystSession = async () => {
-      // Create a timeout promise to guarantee initialization never hangs
-      const timeoutPromise = new Promise((resolve) => setTimeout(resolve, 3000));
+    // Check if user has an active, valid Catalyst or authenticated backend session
+    const checkSession = async () => {
+      try {
+        const catalyst = (window as any).catalyst;
 
-      const sessionCheckTask = async () => {
+        // 1. Verify backend authenticated session via /auth/me
         try {
-          const catalyst = (window as any).catalyst;
-          if (!catalyst || !catalyst.auth) {
-            return parseMockUserCookie();
-          }
+          const controller = new AbortController();
+          const timer = setTimeout(() => controller.abort(), 3500);
+          const profileRes = await fetch('/server/ai-cios/auth/me', {
+            credentials: 'include',
+            signal: controller.signal
+          });
+          clearTimeout(timer);
 
-          const hasJwtCookie = document.cookie.split(';').some((item) => item.trim().startsWith('JWT_AUTH='));
-          if (hasJwtCookie) {
-            try {
-              const catalystClientId = catalyst.config?.zaid || catalyst.config?.client_id || import.meta.env.VITE_CATALYST_CLIENT_ID;
-              await Promise.race([
-                catalyst.auth.signinWithJwt(() => Promise.resolve({
-                  client_id: catalystClientId || '',
-                  scopes: "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
-                  jwt_token: ''
-                })),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('JWT pre-init timeout')), 1500))
-              ]);
-            } catch (e) {
-              console.warn("Notice: JWT session pre-init skipped/timed out:", e);
-            }
-          }
-
-          let isCatalystAuthenticated = false;
-          try {
-            const authStatus = await Promise.race([
-              catalyst.auth.isUserAuthenticated(),
-              new Promise((_, reject) => setTimeout(() => reject(new Error('Catalyst auth check timeout')), 2000))
-            ]);
-            isCatalystAuthenticated = authStatus?.status === 200 || authStatus === true;
-          } catch (authErr) {
-            // Not authenticated or network timeout
-          }
-
-          // 1. Check if custom/Google session or Catalyst session is active, or test /auth/me
-          try {
-            const controller = new AbortController();
-            const timer = setTimeout(() => controller.abort(), 2000);
-            const profileRes = await fetch('/server/ai-cios/auth/me', {
-              credentials: 'include',
-              signal: controller.signal
-            });
-            clearTimeout(timer);
-
-            if (profileRes.ok) {
-              const text = await profileRes.text();
-              const dbProfile = text ? JSON.parse(text) : null;
-              if (dbProfile && (dbProfile.username || dbProfile.id)) {
-                return {
-                  id: dbProfile.id || dbProfile.ROWID || 'db-user',
+          if (profileRes.ok) {
+            const dbProfile = await profileRes.json();
+            if (dbProfile && (dbProfile.username || dbProfile.id)) {
+              if (isMounted) {
+                setUser({
+                  id: dbProfile.id || String(dbProfile.ROWID) || 'db-user',
                   name: dbProfile.name || dbProfile.username,
                   username: dbProfile.username,
-                  email: dbProfile.username,
+                  email: dbProfile.email || dbProfile.username,
                   role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
                   district: dbProfile.district || 'Bengaluru',
-                };
+                  provider: dbProfile.provider || (dbProfile.username?.includes('@') ? 'Google' : 'Database'),
+                  avatar: dbProfile.avatar
+                });
               }
+              return;
             }
-          } catch (err) {
-            // /auth/me skipped
           }
+        } catch (_err) {
+          // Backend profile check timed out or failed
+        }
 
-          if (isCatalystAuthenticated) {
-            try {
-              const userResponse = await Promise.race([
-                catalyst.userManagement.getCurrentProjectUser(),
-                new Promise((_, reject) => setTimeout(() => reject(new Error('User profile fetch timeout')), 1500))
-              ]);
-              const projectUser = userResponse?.content;
-              if (projectUser) {
-                return {
+        // 2. Check Catalyst web SDK project user
+        if (catalyst?.auth && catalyst?.userManagement) {
+          try {
+            const isAuth = await Promise.race([
+              catalyst.auth.isUserAuthenticated(),
+              new Promise((_, reject) => setTimeout(() => reject(new Error('Catalyst timeout')), 2000))
+            ]);
+
+            if (isAuth === true || isAuth?.status === 200) {
+              const userRes = await catalyst.userManagement.getCurrentProjectUser();
+              const projectUser = userRes?.content;
+              if (projectUser && isMounted) {
+                setUser({
                   id: projectUser.ZUID || projectUser.user_id || 'unknown',
                   name: projectUser.first_name
                     ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
@@ -124,28 +88,41 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   username: projectUser.email_id || 'unknown_user',
                   email: projectUser.email_id,
                   role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
-                };
+                  provider: 'Google'
+                });
+                return;
               }
-            } catch (userErr) {
-              console.warn("Catalyst getCurrentProjectUser skipped:", userErr);
             }
+          } catch (_catErr) {
+            // Catalyst session not active
           }
-
-          return parseMockUserCookie();
-        } catch (error: any) {
-          console.warn("Session check fallback:", error?.message);
-          return parseMockUserCookie();
         }
-      };
 
-      try {
-        const resolvedUser: any = await Promise.race([sessionCheckTask(), timeoutPromise]);
-        if (isMounted) {
-          setUser(resolvedUser || parseMockUserCookie());
+        // 3. Check for developer mock_user cookie if in local environment
+        const mockCookie = document.cookie.split(';').find((row) => row.trim().startsWith('mock_user='));
+        if (mockCookie) {
+          try {
+            const parsed = JSON.parse(decodeURIComponent(mockCookie.trim().split('=')[1]));
+            if (parsed && parsed.username && isMounted) {
+              setUser({
+                ...parsed,
+                provider: 'Demo'
+              });
+              return;
+            }
+          } catch {
+            // invalid mock cookie
+          }
         }
-      } catch (err) {
+
+        // Strictly unauthenticated
         if (isMounted) {
-          setUser(parseMockUserCookie());
+          setUser(null);
+        }
+      } catch (error) {
+        console.warn('Authentication check failed:', error);
+        if (isMounted) {
+          setUser(null);
         }
       } finally {
         if (isMounted) {
@@ -154,7 +131,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
       }
     };
 
-    checkCatalystSession();
+    checkSession();
 
     return () => {
       isMounted = false;
@@ -170,36 +147,25 @@ export function AuthProvider({ children }: PropsWithChildren) {
       },
       loginWithGoogle: () => {
         const catalyst = (window as any).catalyst;
-        if (!catalyst) {
-          throw new Error("Catalyst SDK not loaded. Please verify your internet connection and Catalyst configuration.");
-        }
-
         const googleClientId = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-        // Dynamically resolve ZAID from the initialized SDK config
-        const catalystClientId = catalyst.config?.zaid || catalyst.config?.client_id || import.meta.env.VITE_CATALYST_CLIENT_ID;
+        const catalystClientId = catalyst?.config?.zaid || catalyst?.config?.client_id || import.meta.env.VITE_CATALYST_CLIENT_ID;
 
         if (!googleClientId || googleClientId.startsWith('YOUR_')) {
-          console.warn("VITE_GOOGLE_CLIENT_ID not configured.");
-          throw new Error("Google Client ID is not configured in your frontend/.env file.");
-        }
-        if (!catalystClientId) {
-          console.warn("Catalyst ZAID/Client ID not resolved.");
-          throw new Error("Zoho Catalyst Client ID (ZAID) could not be automatically resolved from the SDK configuration.");
+          throw new Error('Google Client ID is not configured in your environment.');
         }
 
         const google = (window as any).google;
-        if (!google || !google.accounts || !google.accounts.oauth2) {
-          throw new Error("Google Identity SDK is not loaded. Please check your network connection and index.html configuration.");
+        if (!google?.accounts?.oauth2) {
+          throw new Error('Google Identity SDK is not loaded. Please check your network connection.');
         }
 
         try {
-          // Initialize implicit token client for popup authentication
           const client = google.accounts.oauth2.initTokenClient({
             client_id: googleClientId,
             scope: 'email profile openid',
             callback: async (tokenResponse: any) => {
               if (tokenResponse.error) {
-                console.error("Google Auth error callback:", tokenResponse.error);
+                console.error('Google Auth error callback:', tokenResponse.error);
                 return;
               }
 
@@ -208,103 +174,73 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
               setLoading(true);
               try {
-                // 1. Post the Google access token to our Express backend
+                // 1. Post Google access token to Express backend
                 const backendRes = await fetch('/server/ai-cios/auth/google-login', {
                   method: 'POST',
-                  headers: {
-                    'Content-Type': 'application/json'
-                  },
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
                   body: JSON.stringify({ access_token: accessToken })
                 });
 
-                let responseData: any = {};
+                let data: any = {};
                 try {
                   const text = await backendRes.text();
-                  responseData = text ? JSON.parse(text) : {};
+                  data = text ? JSON.parse(text) : {};
                 } catch {
-                  responseData = {};
+                  data = {};
                 }
 
                 if (!backendRes.ok) {
-                  throw new Error(responseData.error || `Backend Google login failed (HTTP ${backendRes.status})`);
+                  throw new Error(data.error || `Backend Google login failed (HTTP ${backendRes.status})`);
                 }
-
-                const data = responseData;
 
                 // 2. Perform signinWithJwt inside Catalyst SDK if available
                 if (catalyst?.auth?.signinWithJwt) {
                   try {
                     await catalyst.auth.signinWithJwt(() => {
-                      return new Promise((resolve) => {
-                        resolve({
-                          client_id: data.client_id || catalystClientId,
-                          scopes: data.scopes || "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
-                          jwt_token: data.jwt_token
-                        });
+                      return Promise.resolve({
+                        client_id: data.client_id || catalystClientId,
+                        scopes: data.scopes || "ZOHOCATALYST.tables.rows.ALL,ZOHOCATALYST.cache.READ,ZOHOCATALYST.functions.EXECUTE",
+                        jwt_token: data.jwt_token
                       });
                     });
                   } catch (jwtErr) {
-                    console.warn("Catalyst signinWithJwt notice:", jwtErr);
+                    console.warn('Catalyst signinWithJwt notice:', jwtErr);
                   }
                 }
 
-                // 3. Retrieve user profile details from backend /me or Catalyst to set active React user
-                let userLoaded = false;
-                try {
-                  const profileRes = await fetch('/server/ai-cios/auth/me', {
-                    credentials: 'include',
-                  });
-                  if (profileRes.ok) {
-                    const text = await profileRes.text();
-                    const dbProfile = text ? JSON.parse(text) : null;
-                    if (dbProfile) {
-                      setUser({
-                        id: dbProfile.id || dbProfile.ROWID || 'google-user',
-                        name: dbProfile.name || dbProfile.username,
-                        username: dbProfile.username,
-                        email: dbProfile.username,
-                        role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
-                        district: dbProfile.district || 'Bengaluru',
-                      });
-                      userLoaded = true;
-                    }
-                  }
-                } catch (profileErr) {
-                  console.warn("Backend /me profile fetch notice:", profileErr);
-                }
-
-                if (!userLoaded && catalyst?.auth) {
-                  const isAuthenticated = await catalyst.auth.isUserAuthenticated().catch(() => false);
-                  if (isAuthenticated) {
-                    const userResponse = await catalyst.userManagement.getCurrentProjectUser().catch(() => null);
-                    const projectUser = userResponse?.content;
-                    if (projectUser) {
-                      setUser({
-                        id: projectUser.ZUID || projectUser.user_id || 'unknown',
-                        name: projectUser.first_name
-                          ? `${projectUser.first_name} ${projectUser.last_name || ''}`.trim()
-                          : projectUser.email_id || 'User',
-                        username: projectUser.email_id || 'unknown_user',
-                        email: projectUser.email_id,
-                        role: (projectUser.role_details?.role_name?.toLowerCase() as UserRole) || 'investigator',
-                      });
-                    }
+                // 3. Retrieve authenticated user profile from /auth/me
+                const profileRes = await fetch('/server/ai-cios/auth/me', {
+                  credentials: 'include',
+                });
+                if (profileRes.ok) {
+                  const dbProfile = await profileRes.json();
+                  if (dbProfile) {
+                    setUser({
+                      id: dbProfile.id || String(dbProfile.ROWID) || 'google-user',
+                      name: dbProfile.name || dbProfile.username,
+                      username: dbProfile.username,
+                      email: dbProfile.email || dbProfile.username,
+                      role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
+                      district: dbProfile.district || 'Bengaluru',
+                      provider: 'Google',
+                      avatar: dbProfile.avatar
+                    });
                   }
                 }
               } catch (err: any) {
-                console.error("Authentication post-processing failed:", err);
-                alert("Login processing failed: " + (err.message || 'Unknown error'));
+                console.error('Authentication post-processing failed:', err);
+                alert('Login processing failed: ' + (err.message || 'Unknown error'));
               } finally {
                 setLoading(false);
               }
             }
           });
 
-          // Trigger the Google Sign-In popup prompt
           client.requestAccessToken();
         } catch (error: any) {
-          console.error("Google Token Client initialization error", error);
-          throw new Error("Failed to initialize Google Sign-In client: " + (error.message || "Unknown error"));
+          console.error('Google Token Client initialization error', error);
+          throw new Error('Failed to initialize Google Sign-In client: ' + (error.message || 'Unknown error'));
         }
       },
       loginWithMockCredentials: (username: string, role: UserRole) => {
@@ -323,43 +259,54 @@ export function AuthProvider({ children }: PropsWithChildren) {
           username: username,
           email: username + '@karnatakapolice.gov.in',
           role: role,
+          provider: 'Demo'
         };
         document.cookie = `mock_user=${encodeURIComponent(JSON.stringify(mockUser))}; path=/; max-age=28800; SameSite=Strict`;
         setUser(mockUser);
       },
       logout: async () => {
-        // 1. Clear client-side non-HttpOnly cookies immediately
+        // 1. Clear all client cookies immediately
         document.cookie = "mock_user=; path=/; max-age=0; SameSite=Strict";
         document.cookie = "custom_session=; path=/; max-age=0; SameSite=Strict";
         document.cookie = "JWT_AUTH=; path=/; max-age=0; SameSite=Strict";
         document.cookie = "google_session=; path=/; max-age=0; SameSite=Strict";
 
-        // 2. Call backend logout to clear HttpOnly 'token' and 'custom_session' cookies
+        // 2. Clear relevant session/local storage
+        try {
+          sessionStorage.removeItem('redirect');
+          sessionStorage.removeItem('catalyst_user');
+          localStorage.removeItem('catalyst_auth');
+          localStorage.removeItem('user');
+        } catch (_e) {
+          // ignore
+        }
+
+        // 3. Reset React authentication state immediately
+        setUser(null);
+        setLoading(false);
+
+        // 4. Call backend logout endpoint
         try {
           await fetch('/server/ai-cios/auth/logout', { 
             method: 'POST',
             credentials: 'include'
           });
         } catch (e) {
-          console.warn("Backend logout failed", e);
+          console.warn('Backend logout error:', e);
         }
 
-        // 3. Clear user from React state
-        setUser(null);
-
-        // 4. Perform Catalyst signOut (or manual redirect if not loaded)
+        // 5. Trigger Catalyst signOut if available (in non-blocking background)
         const catalyst = (window as any).catalyst;
-        if (catalyst) {
+        if (catalyst?.auth?.signOut) {
           try {
-            const redirectURL = window.location.origin + '/app/login';
-            await catalyst.auth.signOut(redirectURL);
-          } catch (e) {
-            console.warn("Catalyst signOut failed", e);
-            window.location.href = '/app/login';
+            catalyst.auth.signOut().catch(() => {});
+          } catch (_e) {
+            // ignore
           }
-        } else {
-          window.location.href = '/app/login';
         }
+
+        // 6. Navigate to login page
+        window.location.href = window.location.origin + '/app/login';
       },
     }),
     [user, loading],

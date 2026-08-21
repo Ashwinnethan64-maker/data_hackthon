@@ -24,7 +24,7 @@ interface SidebarProps {
 }
 
 export function Sidebar({ isOpen, onClose, isTabletCollapsed = false }: SidebarProps) {
-  const { user, logout } = useAuth();
+  const { user, loading, logout } = useAuth();
 
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
@@ -101,31 +101,35 @@ export function Sidebar({ isOpen, onClose, isTabletCollapsed = false }: SidebarP
       </nav>
 
       <div className={`mt-6 rounded-2xl border border-white/10 bg-white/5 ${isTabletCollapsed ? 'md:p-2 lg:p-4 flex flex-col items-center lg:items-stretch lg:flex-none gap-4' : 'p-4'}`}>
-        {/* We use CSS classes to handle the toggle between collapsed vs expanded content on desktop vs tablet instead of JS logic so resizing works */}
-        
+        {/* User Card */}
         <div className={`w-full ${isTabletCollapsed ? 'hidden lg:block' : 'block'}`}>
           <div className="flex items-start justify-between gap-3">
-            <div>
-              <p className="text-sm font-semibold text-white">{user?.name || 'Officer'}</p>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-white truncate">{user?.name || 'Authenticated User'}</p>
+              {user?.email && (
+                <p className="text-[11px] text-cyan truncate font-mono mt-0.5">{user.email}</p>
+              )}
               <p className="mt-1 text-xs text-slate-400">
-                {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Officer'} · {user?.district || 'Bengaluru Unit'}
+                {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : 'Officer'} · {user?.provider === 'Google' ? 'Google Auth' : (user?.district || 'Bengaluru Unit')}
               </p>
             </div>
             <Badge variant="info">Online</Badge>
           </div>
           <button 
             onClick={logout}
-            className="mt-4 w-full rounded-xl border border-white/10 px-3 py-2 text-sm text-slate-200 transition hover:bg-white/10"
+            disabled={loading}
+            className="mt-4 w-full rounded-xl border border-white/10 px-3 py-2 text-xs font-semibold text-slate-200 transition hover:bg-white/10 hover:text-white disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            Logout
+            {loading ? 'Signing out…' : 'Logout'}
           </button>
         </div>
 
         {isTabletCollapsed && (
           <button 
             onClick={logout}
+            disabled={loading}
             title="Logout"
-            className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 lg:hidden"
+            className="flex h-10 w-10 items-center justify-center rounded-xl bg-red-500/10 text-red-400 hover:bg-red-500/20 disabled:opacity-50 lg:hidden"
           >
             <LogOut className="h-5 w-5" />
           </button>

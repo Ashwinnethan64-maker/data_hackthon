@@ -158,23 +158,35 @@ router.get('/me', verifyToken, async (req, res) => {
     const dbUser = records.find(r => r.username === req.user.username);
     if (dbUser) {
       const { password, ...safeProfile } = dbUser;
-      return res.json(safeProfile);
+      const isGoogle = (safeProfile.username?.includes('@') && !safeProfile.username?.endsWith('@police.karnataka.gov.in')) || 
+                       (safeProfile.email?.includes('@') && !safeProfile.email?.endsWith('@police.karnataka.gov.in'));
+      return res.json({
+        ...safeProfile,
+        provider: isGoogle ? 'Google' : 'Database',
+        email: safeProfile.email || safeProfile.username
+      });
     }
     // Fallback to JWT-encoded fields if DB lookup fails
+    const isGoogle = req.user.username?.includes('@');
     res.json({ 
       id: req.user.id,
       name: req.user.name, 
       role: req.user.role,
       username: req.user.username,
+      email: req.user.email || req.user.username,
       district: req.user.district,
-      policeStation: req.user.policeStation
+      policeStation: req.user.policeStation,
+      provider: req.user.provider || (isGoogle ? 'Google' : 'System')
     });
   } catch (error) {
+    const isGoogle = req.user?.username?.includes('@');
     res.json({
-      id: req.user.id,
-      name: req.user.name,
-      role: req.user.role,
-      username: req.user.username,
+      id: req.user?.id || 'unknown',
+      name: req.user?.name || 'Officer',
+      role: req.user?.role || 'investigator',
+      username: req.user?.username || 'officer',
+      email: req.user?.email || req.user?.username,
+      provider: isGoogle ? 'Google' : 'System'
     });
   }
 });
