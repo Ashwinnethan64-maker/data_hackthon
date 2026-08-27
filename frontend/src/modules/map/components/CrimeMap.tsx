@@ -9,10 +9,12 @@ import 'leaflet/dist/leaflet.css';
 const KARNATAKA_CENTER: [number, number] = [15.3173, 75.7139];
 const INITIAL_ZOOM = 7;
 
+const MAPTILER_KEY = import.meta.env.VITE_MAPTILER_API_KEY;
+
 const TILE_LAYERS = {
   standard: {
-    url: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
-    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+    url: `https://api.maptiler.com/maps/dataviz-dark/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+    attribution: '&copy; <a href="https://www.maptiler.com/copyright/">MapTiler</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
     maxZoom: 19,
     maxNativeZoom: 19,
   },
