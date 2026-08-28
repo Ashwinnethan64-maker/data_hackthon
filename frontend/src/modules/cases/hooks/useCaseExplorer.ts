@@ -1,6 +1,7 @@
 import { useState, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { caseService } from '../services/caseService';
+import { useDebounce } from '../../../hooks/useDebounce';
 import type { CaseRecord, CaseFilterOptions } from '../types';
 
 export function useCaseExplorer() {
@@ -24,6 +25,14 @@ export function useCaseExplorer() {
     accusedAgeMin: '',
     accusedAgeMax: '',
   });
+
+  // Debounce search query to prevent excessive backend requests while typing
+  const debouncedSearchQuery = useDebounce(filters.searchQuery, 300);
+
+  const effectiveFilters = useMemo(() => ({
+    ...filters,
+    searchQuery: debouncedSearchQuery
+  }), [filters, debouncedSearchQuery]);
 
   // Sorting State
   const [sortColumn, setSortColumn] = useState<keyof CaseRecord>('firNumber');
@@ -74,13 +83,13 @@ export function useCaseExplorer() {
 
   // Query to get paginated cases from backend
   const { data, isLoading, isError, refetch } = useQuery({
-    queryKey: ['cases', filters, sortColumn, sortDirection, currentPage, pageSize],
+    queryKey: ['cases', effectiveFilters, sortColumn, sortDirection, currentPage, pageSize],
     queryFn: () => caseService.getAllCases({
       page: currentPage,
       limit: pageSize,
       sortBy: sortColumn,
       sortOrder: sortDirection,
-      ...filters
+      ...effectiveFilters
     }),
     placeholderData: (previousData) => previousData, // keep old data while fetching
   });

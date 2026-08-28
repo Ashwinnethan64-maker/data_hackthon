@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
+const { memoryCache } = require('../services/cacheService');
+
+// In-memory 30s TTL cache for network graph nodes/edges
+router.use(memoryCache.middleware(30));
 
 const TABLE_NAME = 'firs';
 

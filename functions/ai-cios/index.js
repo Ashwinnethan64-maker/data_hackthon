@@ -1,6 +1,7 @@
 const express = require('express');
 require('dotenv').config();
 const { verifyToken } = require('./middleware/auth');
+const zlib = require('zlib');
 
 // Import routers
 const authRouter = require('./auth/authRouter');
@@ -14,7 +15,42 @@ const settingsRouter = require('./settings/settingsRouter');
 const systemRouter = require('./system/systemRouter');
 
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: '10mb' }));
+
+// Lightweight Response Compression Middleware
+app.use((req, res, next) => {
+  const acceptEncoding = req.headers['accept-encoding'] || '';
+  if (!acceptEncoding.includes('gzip')) {
+    return next();
+  }
+
+  const originalSend = res.send.bind(res);
+  res.send = (body) => {
+    if (typeof body === 'string' && body.length > 1024) {
+      res.setHeader('Content-Encoding', 'gzip');
+      res.removeHeader('Content-Length');
+      zlib.gzip(Buffer.from(body), (err, zipped) => {
+        if (err) return originalSend(body);
+        return originalSend(zipped);
+      });
+      return res;
+    }
+    return originalSend(body);
+  };
+  next();
+});
+
+// Structured Latency & Access Logging
+app.use((req, res, next) => {
+  const start = Date.now();
+  res.on('finish', () => {
+    const duration = Date.now() - start;
+    if (process.env.NODE_ENV !== 'test') {
+      console.log(`[API] ${req.method} ${req.originalUrl} -> ${res.statusCode} (${duration}ms)`);
+    }
+  });
+  next();
+});
 
 // Unprotected routes
 app.use('/system', systemRouter);

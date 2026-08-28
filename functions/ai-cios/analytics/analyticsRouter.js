@@ -1,6 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
+const { memoryCache } = require('../services/cacheService');
+
+// In-memory 45s TTL cache for heavy analytics calculations
+router.use(memoryCache.middleware(45));
 
 const FIRS_TABLE = 'firs';
 const OFFICERS_TABLE = 'officers';
