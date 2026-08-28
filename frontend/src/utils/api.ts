@@ -24,6 +24,15 @@ export async function apiRequest<T = any>(
   const controller = new AbortController();
   const id = setTimeout(() => controller.abort(), timeoutMs);
 
+  // Combine external cancellation signal if provided
+  if (options.signal) {
+    if (options.signal.aborted) {
+      controller.abort();
+    } else {
+      options.signal.addEventListener('abort', () => controller.abort(), { once: true });
+    }
+  }
+
   try {
     const response = await fetch(url, {
       ...options,

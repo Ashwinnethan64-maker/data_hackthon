@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { FileDown, CheckCircle2 } from 'lucide-react';
-import { jsPDF } from 'jspdf';
 import { SharedModal } from './SharedModal';
 interface ExportDialogProps {
   isOpen: boolean;
@@ -14,15 +13,13 @@ export function ExportDialog({ isOpen, onClose, messages }: ExportDialogProps) {
 
   if (!isOpen) return null;
 
-  const handleExport = (format: string) => {
+  const handleExport = async (format: string) => {
     setDownloading(true);
     setSuccess(false);
     
-    setTimeout(() => {
-      setDownloading(false);
-      setSuccess(true);
-      
+    try {
       if (format === 'pdf') {
+        const { jsPDF } = await import('jspdf');
         const doc = new jsPDF();
         doc.setFontSize(16);
         doc.text('AI Investigation Thread', 10, 20);
@@ -50,14 +47,17 @@ export function ExportDialog({ isOpen, onClose, messages }: ExportDialogProps) {
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
-        URL.revokeObjectURL(url);
       }
-      
+      setDownloading(false);
+      setSuccess(true);
       setTimeout(() => {
         setSuccess(false);
         onClose();
       }, 1000);
-    }, 1500);
+    } catch (err) {
+      console.error('Export failed:', err);
+      setDownloading(false);
+    }
   };
 
   return (

@@ -66,6 +66,20 @@ export default defineConfig({
       }
     }
   ],
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom', '@tanstack/react-query'],
+          'vendor-charts': ['echarts', 'echarts-for-react'],
+          'vendor-maps': ['leaflet', 'react-leaflet', 'leaflet.markercluster', 'leaflet.heat'],
+          'vendor-network': ['reactflow'],
+          'vendor-forms': ['react-hook-form', 'zod', '@hookform/resolvers'],
+          'vendor-motion': ['framer-motion'],
+        },
+      },
+    },
+  },
   server: {
     port: 5173,
     host: true,
