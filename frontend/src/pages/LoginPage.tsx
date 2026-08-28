@@ -29,12 +29,17 @@ export function LoginPage() {
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Show a loading screen if checking session on mount
+  // Show a branded loading screen if checking session on mount
   if (loading) {
     return (
-      <div className="flex h-screen flex-col items-center justify-center gap-4 bg-slate-950">
-        <BrandLogo size={48} />
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-cyan/30 border-t-cyan"></div>
+      <div className="flex h-screen flex-col items-center justify-center gap-5 bg-[#081120] text-slate-100">
+        <BrandLogo size={64} variant="iconOnly" />
+        <div className="flex flex-col items-center gap-1.5 text-center">
+          <span className="text-xs font-semibold uppercase tracking-[0.35em] text-cyan/80">AI-CIOS</span>
+          <p className="text-sm font-bold text-white">Crime Intelligence OS</p>
+          <p className="text-xs text-slate-400">Loading secure workspace...</p>
+        </div>
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-cyan/20 border-t-cyan"></div>
       </div>
     );
   }

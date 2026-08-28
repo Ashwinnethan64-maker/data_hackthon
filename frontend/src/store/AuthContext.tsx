@@ -26,8 +26,25 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
 export function AuthProvider({ children }: PropsWithChildren) {
-  const [user, setUser] = useState<AuthUser | null>(null);
-  const [loading, setLoading] = useState(true);
+  // Pre-hydrate user state from cached session if available for instant UI rendering
+  const [user, setUser] = useState<AuthUser | null>(() => {
+    try {
+      const cached = localStorage.getItem('ai_cios_cached_user');
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch {}
+    return null;
+  });
+
+  // If we already have a cached user, start in non-blocking mode
+  const [loading, setLoading] = useState(() => {
+    try {
+      return !localStorage.getItem('ai_cios_cached_user');
+    } catch {
+      return true;
+    }
+  });
 
   useEffect(() => {
     let isMounted = true;
@@ -37,10 +54,10 @@ export function AuthProvider({ children }: PropsWithChildren) {
       try {
         const catalyst = (window as any).catalyst;
 
-        // 1. Verify backend authenticated session via /auth/me
+        // 1. Verify backend authenticated session via /auth/me with quick 1.5s timeout
         try {
           const controller = new AbortController();
-          const timer = setTimeout(() => controller.abort(), 3500);
+          const timer = setTimeout(() => controller.abort(), 1500);
           const profileRes = await fetch('/server/ai-cios/auth/me', {
             credentials: 'include',
             signal: controller.signal
@@ -57,7 +74,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   if (localAvatar) persistedAvatar = localAvatar;
                 } catch {}
 
-                setUser({
+                const authenticatedUser: AuthUser = {
                   id: dbProfile.id || String(dbProfile.ROWID) || 'db-user',
                   name: dbProfile.name || dbProfile.username,
                   username: dbProfile.username,
@@ -66,7 +83,13 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   district: dbProfile.district || 'Bengaluru',
                   provider: dbProfile.provider || (dbProfile.username?.includes('@') ? 'Google' : 'Database'),
                   avatar: persistedAvatar
-                });
+                };
+
+                try {
+                  localStorage.setItem('ai_cios_cached_user', JSON.stringify(authenticatedUser));
+                } catch {}
+
+                setUser(authenticatedUser);
               }
               return;
             }
@@ -294,35 +317,21 @@ export function AuthProvider({ children }: PropsWithChildren) {
           sessionStorage.removeItem('catalyst_user');
           localStorage.removeItem('catalyst_auth');
           localStorage.removeItem('user');
-        } catch (_e) {
-          // ignore
-        }
+          localStorage.removeItem('ai_cios_cached_user');
+        } catch {}
 
-        // 3. Reset React authentication state immediately
-        setUser(null);
-        setLoading(false);
-
-        // 4. Call backend logout endpoint
         try {
-          await fetch('/server/ai-cios/auth/logout', { 
-            method: 'POST',
-            credentials: 'include'
-          });
-        } catch (e) {
-          console.warn('Backend logout error:', e);
-        }
+          await fetch('/server/ai-cios/auth/logout', { method: 'POST', credentials: 'include' });
+        } catch {}
 
-        // 5. Trigger Catalyst signOut if available (in non-blocking background)
         const catalyst = (window as any).catalyst;
         if (catalyst?.auth?.signOut) {
           try {
-            catalyst.auth.signOut().catch(() => {});
-          } catch (_e) {
-            // ignore
-          }
+            await catalyst.auth.signOut();
+          } catch {}
         }
 
-        // 6. Navigate to login page
+        setUser(null);
         window.location.href = window.location.origin + '/app/login';
       },
     }),
