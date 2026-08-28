@@ -1,7 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
+const { auditService } = require('../services/auditService');
 const os = require('os');
+
+// GET /system/audit-logs (Law enforcement chain-of-custody trail)
+router.get('/audit-logs', (req, res) => {
+  const { limit, action, targetResource, userId } = req.query;
+  const logs = auditService.getLogs({ limit, action, targetResource, userId });
+  res.json({ count: logs.length, logs });
+});
 
 // GET /system/health
 router.get('/health', async (req, res) => {

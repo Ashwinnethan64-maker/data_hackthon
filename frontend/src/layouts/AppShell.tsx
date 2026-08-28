@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Navbar } from '../components/Navbar';
+import { ToastContainer } from '../components/ToastContainer';
 
 export function AppShell() {
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
@@ -34,6 +35,7 @@ export function AppShell() {
           </div>
         </main>
       </div>
+      <ToastContainer />
     </div>
   );
 }

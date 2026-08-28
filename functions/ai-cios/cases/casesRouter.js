@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const dbService = require('../services/dbService');
+const { auditService } = require('../services/auditService');
 const PDFDocument = require('pdfkit');
 const { verifyToken } = require('../middleware/auth');
 const { validateBody } = require('../middleware/validate');
@@ -215,6 +216,14 @@ router.get('/:id', async (req, res) => {
     // 1. Try direct lookup by ROWID first
     const record = await dbService.getRow(req, TABLE_NAME, req.params.id);
     if (record && record.firNumber && record.ROWID === req.params.id) {
+      auditService.log({
+        userId: req.user?.id || req.user?.username || 'investigator',
+        officerRole: req.user?.role || 'investigator',
+        action: 'CASE_VIEW',
+        targetResource: 'firs',
+        targetId: record.firNumber,
+        ip: req.ip
+      });
       return res.json(normalizeCaseRecord(record, officers));
     }
 
@@ -222,6 +231,14 @@ router.get('/:id', async (req, res) => {
     const allCases = await dbService.getAllRows(req, TABLE_NAME);
     const found = allCases.find(c => c.firNumber === req.params.id || c.ROWID === req.params.id);
     if (found) {
+      auditService.log({
+        userId: req.user?.id || req.user?.username || 'investigator',
+        officerRole: req.user?.role || 'investigator',
+        action: 'CASE_VIEW',
+        targetResource: 'firs',
+        targetId: found.firNumber,
+        ip: req.ip
+      });
       return res.json(normalizeCaseRecord(found, officers));
     }
 

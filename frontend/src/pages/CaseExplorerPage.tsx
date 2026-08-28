@@ -11,6 +11,7 @@ import { Button } from '../components/Button';
 import { caseService } from '../modules/cases/services/caseService';
 import { CaseFormModal } from '../modules/cases/components/CaseFormModal';
 import { OfficerAssignModal } from '../modules/cases/components/OfficerAssignModal';
+import { showToast } from '../hooks/useToast';
 import type { CaseRecord } from '../modules/cases/types';
 
 export function CaseExplorerPage() {
@@ -53,8 +54,12 @@ export function CaseExplorerPage() {
     mutationFn: (newCase: any) => caseService.createCase(newCase),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] });
+      showToast({ title: 'Case Registered', message: 'New FIR dossier was created successfully.' });
       refetch();
     },
+    onError: (err: any) => {
+      showToast({ type: 'error', title: 'Registration Failed', message: err.message || 'Could not register case.' });
+    }
   });
 
   // Update Mutation
@@ -63,8 +68,12 @@ export function CaseExplorerPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] });
       queryClient.invalidateQueries({ queryKey: ['case'] });
+      showToast({ title: 'Case Updated', message: 'FIR details and assignments updated.' });
       refetch();
     },
+    onError: (err: any) => {
+      showToast({ type: 'error', title: 'Update Failed', message: err.message || 'Could not update case.' });
+    }
   });
 
   // Delete Mutation
@@ -73,8 +82,12 @@ export function CaseExplorerPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['cases'] });
       setSelectedCaseId(null);
+      showToast({ title: 'Case Archived', message: 'The case was successfully moved to archives.' });
       refetch();
     },
+    onError: (err: any) => {
+      showToast({ type: 'error', title: 'Archive Failed', message: err.message || 'Could not archive case.' });
+    }
   });
 
   const handleCreateSubmit = async (formData: any) => {

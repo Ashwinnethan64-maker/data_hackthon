@@ -33,6 +33,98 @@
   color: #06b6d4 !important;
 }
 
+/* ─── High-Fidelity Court-Ready Print & Dossier Styling ─────────────── */
+@media print {
+  /* Hide all interactive UI chrome */
+  nav,
+  aside,
+  header,
+  button,
+  .no-print,
+  [role="dialog"],
+  .leaflet-control-container,
+  .react-flow__controls,
+  .react-flow__panel {
+    display: none !important;
+  }
+
+  body, html {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    font-size: 11pt !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+
+  main {
+    padding: 0 !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    height: auto !important;
+  }
+
+  /* Expand full width container */
+  .max-w-\[1920px\] {
+    max-width: 100% !important;
+    padding: 0 !important;
+  }
+
+  /* Force white cards with clean borders for printing */
+  .bg-slate-900\/40,
+  .bg-slate-900\/60,
+  .bg-slate-900\/80,
+  .bg-slate-950,
+  .bg-navy,
+  .bg-slate-900 {
+    background: #ffffff !important;
+    color: #0f172a !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+  }
+
+  .text-white,
+  .text-slate-100,
+  .text-slate-200,
+  .text-slate-300 {
+    color: #0f172a !important;
+  }
+
+  .text-slate-400,
+  .text-slate-500 {
+    color: #475569 !important;
+  }
+
+  /* Table styling */
+  table {
+    width: 100% !important;
+    border-collapse: collapse !important;
+  }
+
+  th, td {
+    border: 1px solid #cbd5e1 !important;
+    padding: 6px 8px !important;
+    color: #0f172a !important;
+  }
+
+  th {
+    background: #f1f5f9 !important;
+    font-weight: 600 !important;
+  }
+
+  /* Page break utilities */
+  .page-break-before {
+    page-break-before: always;
+  }
+
+  .page-break-after {
+    page-break-after: always;
+  }
+
+  .page-break-inside-avoid {
+    page-break-inside: avoid;
+  }
+}
+
 /* ─── Leaflet Popup Dark Theme ─────────────────────────────────────────── */
 .leaflet-popup-content-wrapper {
   background: rgba(8, 17, 32, 0.97) !important;
