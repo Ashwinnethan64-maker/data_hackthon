@@ -31,7 +31,18 @@ export function Sidebar({ isOpen, onClose, isHovered = false, onMouseEnter, onMo
       }
     };
     window.addEventListener('keydown', handleEscape);
-    return () => window.removeEventListener('keydown', handleEscape);
+    
+    // Lock body scroll on mobile when drawer is active
+    if (isOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+
+    return () => {
+      window.removeEventListener('keydown', handleEscape);
+      document.body.style.overflow = '';
+    };
   }, [isOpen, onClose]);
 
   // On desktop: default state is compact (w-20), on hover it smoothly expands to w-[260px]

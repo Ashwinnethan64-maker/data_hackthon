@@ -65,6 +65,8 @@ export function useAiInvestigator() {
   const [isRecording, setIsRecording] = useState(false);
   const [activeSpeechMessageId, setActiveSpeechMessageId] = useState<string | null>(null);
 
+  const promptChips = language === 'kn' ? kannadaSuggestedPrompts : defaultSuggestedPrompts;
+
   const [messagesByThread, setMessagesByThread] = useState<Record<string, AiMessage[]>>(() =>
     conversationThreads.reduce<Record<string, AiMessage[]>>((acc, thread) => {
       // System greeting

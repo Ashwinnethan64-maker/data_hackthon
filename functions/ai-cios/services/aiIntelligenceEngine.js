@@ -660,11 +660,14 @@ function generateGroundedResponse(intent, query, filteredFirs, allFirs, language
   const actsList = parseJSON(primaryCase.applicableActs, []);
 
   if (isKn) {
-    let sum = `ನಾನು ${districtName} ನಲ್ಲಿ ${totalCount} ${crimeCategory} ಪ್ರಕರಣ(ಗಳನ್ನು) ಪತ್ತೆಹಚ್ಚಿದ್ದೇನೆ. `;
-    sum += `ಪ್ರಮುಖ ದಾಖಲೆ FIR #${primaryCase.firNumber} (${primaryCase.policeStation}), ಸ್ಥಿತಿ: ${primaryCase.status}. `;
+    let sum = `ಬೆಂಗಳೂರು/ಕರ್ನಾಟಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಒಟ್ಟು ${totalCount} ${crimeCategory} ಪ್ರಕರಣಗಳು ಪತ್ತೆಯಾಗಿವೆ.\n\n`;
+    sum += `**ಮುಖ್ಯ ಪ್ರಕರಣ:** FIR #${primaryCase.firNumber} (${primaryCase.policeStation}, ${districtName})\n`;
+    sum += `**ಪ್ರಕರಣದ ಸ್ಥಿತಿ:** ${primaryCase.status === 'Closed' ? 'ಪೂರ್ಣಗೊಂಡಿದೆ / ಮುಚ್ಚಲಾಗಿದೆ' : 'ಸಕ್ರಿಯ ತನಿಖೆಯಲ್ಲಿದೆ'}\n`;
     if (primaryCase.description) {
-      sum += `ಪ್ರಕರಣದ ಸಾರಾಂಶ: ${primaryCase.description.substring(0, 120)}...`;
+      sum += `**ವಿವರಣೆ:** ${primaryCase.description}\n\n`;
     }
+    sum += `ತನಿಖಾ ತಂಡವು ಲಭ್ಯವಿರುವ ಸಾಕ್ಷ್ಯಾಧಾರಗಳನ್ನು ಸಂಗ್ರಹಿಸಿದ್ದು, ಸಂಬಂಧಿತ ಆರೋಪಿಗಳ ಪತ್ತೆ ಹಾಗೂ ಮುಂದಿನ ಕಾನೂನು ಕ್ರಮಗಳನ್ನು ಕೈಗೊಳ್ಳಲು ಸಿದ್ಧತೆ ನಡೆಸುತ್ತಿದೆ.`;
+
     return {
       summary: sum,
       evidence: evidenceList.map(e => ({ label: e.type || 'ಪುರಾವೆ', value: e.description || 'ದಾಖಲಿಸಲಾಗಿದೆ', source: `FIR #${primaryCase.firNumber}` })),
@@ -677,8 +680,8 @@ function generateGroundedResponse(intent, query, filteredFirs, allFirs, language
         status: c.status
       })),
       investigationTimeline: [
-        { title: 'FIR Registered', time: primaryCase.incidentDate ? primaryCase.incidentDate.split('T')[0] : '2026-01-15' },
-        { title: 'Investigation Stage', time: primaryCase.status || 'Active' }
+        { title: 'FIR ದಾಖಲಿಸಲಾಗಿದೆ', time: primaryCase.incidentDate ? primaryCase.incidentDate.split('T')[0] : '2026-01-15' },
+        { title: 'ತನಿಖಾ ಹಂತ', time: primaryCase.status || 'Active' }
       ],
       suggestedQuestions: [
         'ಇದರಲ್ಲಿ ಹೆಚ್ಚು ಅಪಾಯದ ಪ್ರಕರಣ ಯಾವುದು?',

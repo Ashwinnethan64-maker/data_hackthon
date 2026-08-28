@@ -2,6 +2,11 @@ export function cn(...classes: Array<string | false | null | undefined>) {
   return classes.filter(Boolean).join(' ');
 }
 
+// Temporary extraction utility
+export function extractLogo() {
+  // no-op
+}
+
 export function sanitizeSearchQuery(q: unknown, max = 100): string {
   if (typeof q !== 'string') return '';
   return q.slice(0, max).replace(/[\x00-\x1F\x7F]/g, '').trim();
@@ -34,4 +39,5 @@ export function sanitizeRedirectPath(path: unknown, fallback = '/'): string {
   }
   return fallback;
 }
+
 

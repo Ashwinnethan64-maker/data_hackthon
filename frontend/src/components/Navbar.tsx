@@ -50,25 +50,24 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
   };
 
   return (
-    <header className="sticky top-0 z-[1020] border-b border-white/10 bg-navy/85 px-3 py-2.5 md:px-4 md:py-3 backdrop-blur-xl sm:px-6 lg:px-8">
+    <header className="sticky top-0 z-[1020] border-b border-white/10 bg-navy/90 px-3 py-2 md:px-5 md:py-3 backdrop-blur-xl">
       <div className="flex flex-row items-center justify-between gap-2 md:gap-4 w-full">
         
         {/* Branding & Menu Toggle */}
-        <div className="flex items-center gap-3 shrink-0">
+        <div className="flex items-center gap-2.5 shrink-0">
           <button 
-            onClick={() => {
-              if (window.innerWidth < 768) {
-                onMenuClick();
-              }
-            }}
-            aria-label="Toggle menu"
-            className="rounded-lg border border-white/10 bg-white/5 p-2 text-slate-300 hover:text-white lg:hidden shrink-0 min-h-[40px] min-w-[40px] flex items-center justify-center"
+            onClick={onMenuClick}
+            aria-label="Toggle navigation menu"
+            className="rounded-xl border border-white/10 bg-white/5 p-2 text-slate-300 hover:text-white hover:bg-white/10 md:hidden shrink-0 min-h-[44px] min-w-[44px] flex items-center justify-center transition active:scale-95"
           >
             <Menu className="h-5 w-5" />
           </button>
           
-          <div className="hidden md:block">
-            <BrandLogo size={30} showText variant="header" />
+          <div className="hidden sm:block">
+            <BrandLogo size={28} showText variant="header" />
+          </div>
+          <div className="block sm:hidden">
+            <BrandLogo size={28} variant="iconOnly" />
           </div>
         </div>
 
@@ -81,14 +80,14 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
 
           <Button 
             variant="secondary" 
-            className="hidden xl:flex h-10 px-3.5 shrink-0 text-xs"
+            className="hidden lg:flex h-10 px-3.5 shrink-0 text-xs"
             onClick={() => setIsQuickActionsOpen(true)}
           >
             <Sparkles className="h-3.5 w-3.5 text-cyan" />
-            Quick Actions
+            <span>Quick Actions</span>
           </Button>
 
-          <div className="glass-panel hidden 2xl:flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-xs text-slate-300">
+          <div className="glass-panel hidden xl:flex h-10 shrink-0 items-center gap-2 rounded-xl px-3 text-xs text-slate-300">
             <Clock3 className="h-3.5 w-3.5 text-cyan" />
             <span>{dayjs().format('ddd, DD MMM · HH:mm')}</span>
           </div>

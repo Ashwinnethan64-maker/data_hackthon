@@ -57,8 +57,8 @@ export function BrandLogo({
 
   const imageStyle = size ? { width: `${size}px`, height: `${size}px` } : undefined;
 
-  // Use the official AI-CIOS logo asset across all variants
-  const imageSrc = '/ai-cios-logo.png';
+  // Use the official AI-CIOS SVG logo asset across all variants
+  const imageSrc = '/ai-cios-logo.svg';
 
   // Clean transparent logo image without artificial box wrapper
   const logoImage = (

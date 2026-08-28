@@ -5,10 +5,15 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ─── Global Font Stack with Native Kannada Support ─────────────────── */
+body, input, button, textarea, select {
+  font-family: Inter, "Noto Sans Kannada", "Nirmala UI", "Segoe UI", system-ui, -apple-system, sans-serif;
+}
+
 /* ─── Leaflet Dark Theme Overrides ───────────────────────────────────── */
 .leaflet-container {
   background: #060f1e;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: Inter, "Noto Sans Kannada", "Nirmala UI", "Segoe UI", system-ui, sans-serif;
 }
 
 .leaflet-control-zoom {
