@@ -57,10 +57,8 @@ export function BrandLogo({
 
   const imageStyle = size ? { width: `${size}px`, height: `${size}px` } : undefined;
 
-  // Use clean transparent emblem symbol matching dark cybersecurity theme
-  const imageSrc = (variant === 'sidebar' || variant === 'iconOnly' || variant === 'header' || variant === 'login') 
-    ? '/emblem.png' 
-    : '/logo.png';
+  // Use the official AI-CIOS logo asset across all variants
+  const imageSrc = '/ai-cios-logo.png';
 
   // Clean transparent logo image without artificial box wrapper
   const logoImage = (
