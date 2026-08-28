@@ -22,8 +22,8 @@ interface MapToolbarProps {
 
 const DISTRICTS = ['Bengaluru', 'Mysuru', 'Mangaluru', 'Hubballi', 'Belagavi', 'Shivamogga', 'Tumakuru', 'Ballari', 'Davanagere', 'Kalaburagi'];
 const CRIME_TYPES: CrimeCategory[] = ['Murder', 'Robbery', 'Burglary', 'Cyber Crime', 'Drug Crime', 'Kidnapping', 'Fraud', 'Violence', 'Traffic Crime', 'Theft', 'Extortion', 'Assault'];
-const RISK_LEVELS: RiskLevel[] = ['Low', 'Medium', 'High', 'Critical'];
-const STATUSES: IncidentStatus[] = ['Open', 'Closed', 'Pending'];
+const RISK_LEVELS: RiskLevel[] = ['Critical', 'High', 'Medium', 'Low'];
+const STATUSES: IncidentStatus[] = ['Open', 'Pending', 'Closed'];
 
 type ActiveDropdown = 'district' | 'crime' | 'risk' | 'status' | 'date' | 'export' | null;
 
@@ -40,15 +40,25 @@ export function MapToolbar({
   const [exportMessage, setExportMessage] = useState<string | null>(null);
   const toolbarRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown on click outside
+  // Close dropdown on click outside & Escape key listener
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (toolbarRef.current && !toolbarRef.current.contains(e.target as Node)) {
         setActiveDropdown(null);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setActiveDropdown(null);
+      }
+    };
+
     document.addEventListener('mousedown', handleClickOutside);
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleKeyDown);
+    };
   }, []);
 
   const toggleDropdown = (key: ActiveDropdown) =>
@@ -147,20 +157,22 @@ export function MapToolbar({
   };
 
   return (
-    <div ref={toolbarRef} className="relative z-[1010] bg-slate-950/95 border-b border-white/10 backdrop-blur-xl shadow-lg">
+    <div ref={toolbarRef} className="relative z-[1100] bg-slate-950/95 border-b border-white/10 backdrop-blur-xl shadow-xl">
       {/* Main Responsive Toolbar Row */}
-      <div className="flex flex-wrap items-center justify-between gap-2.5 px-4 py-2.5">
-        {/* Left cluster: Search + Filters */}
+      <div className="flex flex-wrap items-center justify-between gap-2.5 px-3.5 py-2.5">
+        
+        {/* LEFT SIDE: Search + Filter Group */}
         <div className="flex flex-wrap items-center gap-2 flex-1 min-w-[280px]">
+          
           {/* Search FIR input */}
-          <div className="relative min-w-[180px] max-w-[240px] flex-1">
+          <div className="relative min-w-[170px] max-w-[220px] flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
             <input
               type="text"
               placeholder="Search FIR, area, station…"
               value={filters.searchQuery}
               onChange={(e) => onFiltersChange({ searchQuery: e.target.value })}
-              className="w-full pl-9 pr-7 py-1.5 bg-slate-900/80 border border-white/10 rounded-xl text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan/50 focus:ring-1 focus:ring-cyan/20 transition-all shadow-inner h-9"
+              className="w-full pl-9 pr-7 py-1.5 bg-slate-900/90 border border-white/10 rounded-xl text-xs text-slate-200 placeholder-slate-500 outline-none focus:border-cyan/50 focus:ring-1 focus:ring-cyan/20 transition-all shadow-inner h-9"
             />
             {filters.searchQuery && (
               <button
@@ -172,9 +184,9 @@ export function MapToolbar({
             )}
           </div>
 
-          <div className="hidden sm:block w-px h-6 bg-white/10 shrink-0" />
+          <div className="hidden lg:block w-px h-6 bg-white/10 shrink-0" />
 
-          {/* Filter Dropdown Buttons */}
+          {/* 1. DISTRICT DROPDOWN */}
           <div className="relative">
             <button
               onClick={() => toggleDropdown('district')}
@@ -195,14 +207,14 @@ export function MapToolbar({
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', activeDropdown === 'district' && 'rotate-180')} />
             </button>
 
-            {/* Anchored District Dropdown Panel */}
             <AnimatePresence>
               {activeDropdown === 'district' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                  className="absolute left-0 top-full mt-1.5 z-[1050] w-72 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 top-full mt-2 z-[1200] w-80 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
                 >
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Filter by District</span>
@@ -212,20 +224,20 @@ export function MapToolbar({
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-56 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 gap-1.5 max-h-60 overflow-y-auto pr-1">
                     {DISTRICTS.map((d) => (
                       <button
                         key={d}
                         onClick={() => onFiltersChange({ districts: toggleArrayValue(filters.districts, d) })}
                         className={clsx(
-                          'px-2.5 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5',
+                          'px-2.5 py-2 rounded-lg text-xs border transition-all flex items-center justify-between text-left',
                           filters.districts.includes(d)
                             ? 'bg-police/30 border-cyan/50 text-cyan font-medium'
-                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20'
+                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                         )}
                       >
-                        {filters.districts.includes(d) && <Check className="w-3 h-3 text-cyan" />}
-                        {d}
+                        <span className="truncate">{d}</span>
+                        {filters.districts.includes(d) && <Check className="w-3.5 h-3.5 text-cyan shrink-0 ml-1" />}
                       </button>
                     ))}
                   </div>
@@ -234,6 +246,7 @@ export function MapToolbar({
             </AnimatePresence>
           </div>
 
+          {/* 2. CRIME TYPE DROPDOWN */}
           <div className="relative">
             <button
               onClick={() => toggleDropdown('crime')}
@@ -254,14 +267,14 @@ export function MapToolbar({
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', activeDropdown === 'crime' && 'rotate-180')} />
             </button>
 
-            {/* Anchored Crime Dropdown */}
             <AnimatePresence>
               {activeDropdown === 'crime' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                  className="absolute left-0 top-full mt-1.5 z-[1050] w-80 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 top-full mt-2 z-[1200] w-88 max-w-[92vw] sm:w-96 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
                 >
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Filter by Crime Type</span>
@@ -271,20 +284,20 @@ export function MapToolbar({
                       </button>
                     )}
                   </div>
-                  <div className="flex flex-wrap gap-1.5 max-h-60 overflow-y-auto pr-1">
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-64 overflow-y-auto pr-1">
                     {CRIME_TYPES.map((c) => (
                       <button
                         key={c}
                         onClick={() => onFiltersChange({ crimeCategories: toggleArrayValue(filters.crimeCategories, c) })}
                         className={clsx(
-                          'px-2.5 py-1.5 rounded-lg text-xs border transition-all flex items-center gap-1.5',
+                          'px-2 py-2 rounded-lg text-xs border transition-all flex items-center justify-between text-left',
                           filters.crimeCategories.includes(c)
                             ? 'bg-police/30 border-cyan/50 text-cyan font-medium'
-                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20'
+                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                         )}
                       >
-                        {filters.crimeCategories.includes(c) && <Check className="w-3 h-3 text-cyan" />}
-                        {c}
+                        <span className="truncate">{c}</span>
+                        {filters.crimeCategories.includes(c) && <Check className="w-3 h-3 text-cyan shrink-0 ml-1" />}
                       </button>
                     ))}
                   </div>
@@ -293,6 +306,7 @@ export function MapToolbar({
             </AnimatePresence>
           </div>
 
+          {/* 3. RISK LEVEL DROPDOWN */}
           <div className="relative">
             <button
               onClick={() => toggleDropdown('risk')}
@@ -312,14 +326,14 @@ export function MapToolbar({
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', activeDropdown === 'risk' && 'rotate-180')} />
             </button>
 
-            {/* Anchored Risk Dropdown */}
             <AnimatePresence>
               {activeDropdown === 'risk' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                  className="absolute left-0 top-full mt-1.5 z-[1050] w-64 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 top-full mt-2 z-[1200] w-60 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
                 >
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Risk Severity</span>
@@ -338,7 +352,7 @@ export function MapToolbar({
                           'px-3 py-2 rounded-xl text-xs border transition-all flex items-center justify-between',
                           filters.riskLevels.includes(r)
                             ? 'bg-police/30 border-cyan/50 text-cyan font-semibold'
-                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20'
+                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                         )}
                       >
                         <span className="flex items-center gap-2">
@@ -358,6 +372,7 @@ export function MapToolbar({
             </AnimatePresence>
           </div>
 
+          {/* 4. STATUS DROPDOWN */}
           <div className="relative">
             <button
               onClick={() => toggleDropdown('status')}
@@ -377,14 +392,14 @@ export function MapToolbar({
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', activeDropdown === 'status' && 'rotate-180')} />
             </button>
 
-            {/* Anchored Status Dropdown */}
             <AnimatePresence>
               {activeDropdown === 'status' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                  className="absolute left-0 top-full mt-1.5 z-[1050] w-56 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 top-full mt-2 z-[1200] w-56 rounded-2xl border border-white/10 bg-slate-900/98 p-3 shadow-2xl backdrop-blur-2xl"
                 >
                   <div className="flex items-center justify-between pb-2 mb-2 border-b border-white/5">
                     <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400">Case Status</span>
@@ -403,7 +418,7 @@ export function MapToolbar({
                           'px-3 py-2 rounded-xl text-xs border transition-all flex items-center justify-between',
                           filters.statuses.includes(s)
                             ? 'bg-police/30 border-cyan/50 text-cyan font-semibold'
-                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20'
+                            : 'bg-slate-800/60 border-white/5 text-slate-300 hover:border-white/20 hover:text-white'
                         )}
                       >
                         <span>{s}</span>
@@ -416,6 +431,7 @@ export function MapToolbar({
             </AnimatePresence>
           </div>
 
+          {/* 5. DATE RANGE DROPDOWN */}
           <div className="relative">
             <button
               onClick={() => toggleDropdown('date')}
@@ -431,14 +447,14 @@ export function MapToolbar({
               <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform duration-200', activeDropdown === 'date' && 'rotate-180')} />
             </button>
 
-            {/* Anchored Date Dropdown */}
             <AnimatePresence>
               {activeDropdown === 'date' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                  className="absolute left-0 top-full mt-1.5 z-[1050] w-72 rounded-2xl border border-white/10 bg-slate-900/98 p-4 shadow-2xl backdrop-blur-2xl"
+                  transition={{ duration: 0.15 }}
+                  className="absolute left-0 sm:left-auto sm:right-0 md:left-0 top-full mt-2 z-[1200] w-72 rounded-2xl border border-white/10 bg-slate-900/98 p-4 shadow-2xl backdrop-blur-2xl"
                 >
                   <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-3">Incident Timeline</span>
                   <div className="flex flex-col gap-3">
@@ -475,8 +491,9 @@ export function MapToolbar({
           </div>
         </div>
 
-        {/* Right cluster: Map Mode, Heatmap, AI Analyze, Export, Count */}
+        {/* RIGHT SIDE: Heatmap, Satellite, AI Analyze, Export, Count */}
         <div className="flex items-center gap-2 shrink-0">
+          
           {/* Heatmap toggle */}
           <button
             onClick={onToggleHeatmap}
@@ -536,10 +553,11 @@ export function MapToolbar({
             <AnimatePresence>
               {activeDropdown === 'export' && (
                 <motion.div
-                  initial={{ opacity: 0, y: 6, scale: 0.98 }}
+                  initial={{ opacity: 0, y: 4, scale: 0.98 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: 4, scale: 0.98 }}
-                  className="absolute right-0 top-full mt-1.5 z-[1050] w-52 rounded-2xl border border-white/10 bg-slate-900/98 p-2 shadow-2xl backdrop-blur-2xl"
+                  transition={{ duration: 0.15 }}
+                  className="absolute right-0 top-full mt-2 z-[1200] w-52 rounded-2xl border border-white/10 bg-slate-900/98 p-2 shadow-2xl backdrop-blur-2xl"
                 >
                   <div className="px-3 py-1.5 text-[10px] font-bold uppercase tracking-wider text-slate-400 border-b border-white/5 mb-1">
                     Export Crime Layers

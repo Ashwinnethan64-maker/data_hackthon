@@ -8,11 +8,15 @@ const TABLE_NAME = 'reports';
 // In-memory file storage for hackathon to avoid complex catalyst file store setup
 const fileStorage = new Map();
 
-// Helper to escape CSV fields
+// Helper to escape CSV fields & prevent CSV Formula Injection (CWE-1236)
 const escapeCSV = (field) => {
   if (field === null || field === undefined) return '""';
-  const str = String(field);
-  if (str.includes(',') || str.includes('\n') || str.includes('"')) {
+  let str = String(field);
+  // Prevent Excel / LibreOffice formula execution if cell begins with =, +, -, @, tab, or CR
+  if (/^[=+\-@\t\r]/.test(str)) {
+    str = "'" + str;
+  }
+  if (str.includes(',') || str.includes('\n') || str.includes('\r') || str.includes('"')) {
     return `"${str.replace(/"/g, '""')}"`;
   }
   return `"${str}"`;

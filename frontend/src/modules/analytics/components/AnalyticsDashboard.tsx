@@ -52,13 +52,13 @@ export function AnalyticsDashboard({
 
           {/* Section 4: Hotspot Intelligence */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <HotspotRankingChart />
+            <HotspotRankingChart firs={filteredFirs} />
             <BehavioralAnalysisChart />
           </div>
 
           {/* Section 5: Repeat Offenders */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <RepeatOffenderChart />
+            <RepeatOffenderChart firs={filteredFirs} />
             <SociologicalChart />
           </div>
 

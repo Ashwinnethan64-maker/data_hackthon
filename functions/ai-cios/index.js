@@ -15,7 +15,17 @@ const settingsRouter = require('./settings/settingsRouter');
 const systemRouter = require('./system/systemRouter');
 
 const app = express();
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '2mb' }));
+
+// Security Headers Middleware (OWASP recommended)
+app.use((req, res, next) => {
+  res.setHeader('X-Content-Type-Options', 'nosniff');
+  res.setHeader('X-Frame-Options', 'DENY');
+  res.setHeader('X-XSS-Protection', '1; mode=block');
+  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=(self)');
+  next();
+});
 
 // Lightweight Response Compression Middleware
 app.use((req, res, next) => {
