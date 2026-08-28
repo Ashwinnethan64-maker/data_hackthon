@@ -1,11 +1,16 @@
 import { useAuth } from '../store/AuthContext';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
-import { Shield, User, Mail, Building, MapPin, KeyRound, LogOut, CheckCircle2, ShieldCheck, Activity, Smartphone } from 'lucide-react';
+import { Shield, User, Mail, Building, MapPin, KeyRound, LogOut, CheckCircle2, ShieldCheck, Activity, Smartphone, Upload, Trash2, Camera, Loader2 } from 'lucide-react';
 import { Link } from 'react-router-dom';
+import { useState, useRef } from 'react';
 
 export function ProfilePage() {
-  const { user, loading, logout } = useAuth();
+  const { user, loading, logout, updateAvatar } = useAuth();
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadSuccess, setUploadSuccess] = useState<string | null>(null);
+  const [isUploading, setIsUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const getInitials = (name?: string) => {
     if (!name) return 'OF';
@@ -15,6 +20,49 @@ export function ProfilePage() {
       .slice(0, 2)
       .join('')
       .toUpperCase();
+  };
+
+  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploadError(null);
+    setUploadSuccess(null);
+
+    // Validate type: PNG, JPEG, WEBP
+    const validTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      setUploadError('Unsupported image format. Please upload JPG, PNG, or WEBP.');
+      return;
+    }
+
+    // Validate max size (2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      setUploadError('Image size exceeds 2MB limit. Please choose a smaller file.');
+      return;
+    }
+
+    setIsUploading(true);
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      updateAvatar(base64);
+      setIsUploading(false);
+      setUploadSuccess('Profile picture updated successfully.');
+      setTimeout(() => setUploadSuccess(null), 3500);
+    };
+    reader.onerror = () => {
+      setIsUploading(false);
+      setUploadError('Failed to read image file. Please try again.');
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleRemoveImage = () => {
+    updateAvatar(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
+    setUploadSuccess('Profile picture removed. Initials restored.');
+    setTimeout(() => setUploadSuccess(null), 3500);
   };
 
   return (
@@ -36,11 +84,24 @@ export function ProfilePage() {
         </div>
       </section>
 
+      {/* Upload Notification Banners */}
+      {uploadError && (
+        <div className="p-3 bg-red-500/20 border border-red-500/40 rounded-xl text-red-300 text-xs flex items-center gap-2">
+          <span>{uploadError}</span>
+        </div>
+      )}
+      {uploadSuccess && (
+        <div className="p-3 bg-emerald-500/20 border border-emerald-500/40 rounded-xl text-emerald-300 text-xs flex items-center gap-2">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{uploadSuccess}</span>
+        </div>
+      )}
+
       {/* Main Profile Grid */}
       <div className="grid gap-6 md:grid-cols-[1.1fr_1.9fr]">
         {/* Left: Avatar & Quick Status */}
         <Card className="flex flex-col items-center text-center p-6 space-y-4">
-          <div className="relative">
+          <div className="relative group">
             {user?.avatar ? (
               <img
                 src={user.avatar}
@@ -53,6 +114,46 @@ export function ProfilePage() {
               </div>
             )}
             <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-navy ring-2 ring-emerald-500/30" />
+            
+            {/* Quick Upload Hover Overlay */}
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="absolute inset-0 rounded-3xl bg-navy/80 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center text-cyan text-[11px] font-bold gap-1"
+              title="Change profile picture"
+            >
+              <Camera className="w-5 h-5" />
+              <span>Change</span>
+            </button>
+          </div>
+
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleImageUpload}
+            accept="image/jpeg,image/png,image/webp"
+            className="hidden"
+          />
+
+          {/* Avatar Action Buttons */}
+          <div className="flex gap-2">
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isUploading}
+              className="px-3 py-1.5 rounded-lg border border-cyan/30 bg-cyan/10 hover:bg-cyan/20 text-cyan text-xs font-semibold flex items-center gap-1.5 transition"
+            >
+              {isUploading ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
+              <span>Upload Photo</span>
+            </button>
+            {user?.avatar && (
+              <button
+                onClick={handleRemoveImage}
+                className="px-3 py-1.5 rounded-lg border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs font-semibold flex items-center gap-1.5 transition"
+                title="Remove photo"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>Remove</span>
+              </button>
+            )}
           </div>
 
           <div className="space-y-1 w-full">

@@ -20,6 +20,7 @@ interface AuthContextValue {
   loginWithProfile: (profile: AuthUser) => void;
   logout: () => Promise<void>;
   loginWithMockCredentials: (username: string, role: UserRole) => void;
+  updateAvatar: (avatarUrl: string | null) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
@@ -50,6 +51,12 @@ export function AuthProvider({ children }: PropsWithChildren) {
             const dbProfile = await profileRes.json();
             if (dbProfile && (dbProfile.username || dbProfile.id)) {
               if (isMounted) {
+                let persistedAvatar = dbProfile.avatar;
+                try {
+                  const localAvatar = localStorage.getItem(`ai_cios_avatar_${dbProfile.username || dbProfile.id}`);
+                  if (localAvatar) persistedAvatar = localAvatar;
+                } catch {}
+
                 setUser({
                   id: dbProfile.id || String(dbProfile.ROWID) || 'db-user',
                   name: dbProfile.name || dbProfile.username,
@@ -58,7 +65,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
                   district: dbProfile.district || 'Bengaluru',
                   provider: dbProfile.provider || (dbProfile.username?.includes('@') ? 'Google' : 'Database'),
-                  avatar: dbProfile.avatar
+                  avatar: persistedAvatar
                 });
               }
               return;
@@ -144,6 +151,16 @@ export function AuthProvider({ children }: PropsWithChildren) {
       loading,
       loginWithProfile: (profile: AuthUser) => {
         setUser(profile);
+      },
+      updateAvatar: (avatarUrl: string | null) => {
+        setUser((prev) => {
+          if (!prev) return null;
+          const updated = { ...prev, avatar: avatarUrl || undefined };
+          try {
+            localStorage.setItem(`ai_cios_avatar_${prev.username || prev.id}`, avatarUrl || '');
+          } catch {}
+          return updated;
+        });
       },
       loginWithGoogle: () => {
         const catalyst = (window as any).catalyst;

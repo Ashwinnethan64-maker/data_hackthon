@@ -1,10 +1,9 @@
-import { Clock3, Sparkles, Menu, Shield } from 'lucide-react';
+import { Clock3, Sparkles, Menu, Shield, Settings, ArrowUpRight } from 'lucide-react';
 import dayjs from 'dayjs';
 import { Button } from './Button';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { Modal } from './Modal';
 import { Link } from 'react-router-dom';
-import { ArrowUpRight } from 'lucide-react';
 import { BrandLogo } from './common/BrandLogo';
 import { GlobalSearchBar } from './GlobalSearchBar';
 import { useAuth } from '../store/AuthContext';
@@ -16,7 +15,29 @@ interface NavbarProps {
 
 export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
   const [isQuickActionsOpen, setIsQuickActionsOpen] = useState(false);
-  const { user } = useAuth();
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileMenuRef = useRef<HTMLDivElement>(null);
+  const { user, logout } = useAuth();
+
+  // Close profile popover on click outside or Escape
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (profileMenuRef.current && !profileMenuRef.current.contains(e.target as Node)) {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsProfileMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    window.addEventListener('keydown', handleEscape);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      window.removeEventListener('keydown', handleEscape);
+    };
+  }, []);
 
   const getInitials = (name?: string) => {
     if (!name) return 'OF';
@@ -38,8 +59,6 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
             onClick={() => {
               if (window.innerWidth < 768) {
                 onMenuClick();
-              } else {
-                onTabletCollapseToggle?.();
               }
             }}
             aria-label="Toggle menu"
@@ -53,7 +72,7 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
           </div>
         </div>
 
-        {/* Action area (Functional Search + Clock + Profile Avatar) */}
+        {/* Action area (Functional Search + Clock + Profile Avatar Popover) */}
         <div className="flex flex-1 items-center gap-2 md:gap-3 justify-end min-w-0">
           {/* Functional Global Search */}
           <div className="flex-1 max-w-xl min-w-0">
@@ -74,36 +93,94 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
             <span>{dayjs().format('ddd, DD MMM · HH:mm')}</span>
           </div>
 
-          {/* Top-Right User Profile Avatar */}
-          <Link
-            to="/profile"
-            className="group relative flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-1.5 md:pr-3 text-left transition-all hover:border-cyan/40 hover:bg-white/10 shrink-0"
-            title="View Officer Profile"
-          >
-            <div className="relative">
-              {user?.avatar ? (
-                <img
-                  src={user.avatar}
-                  alt={user.name || 'Officer'}
-                  className="h-8 w-8 rounded-lg object-cover border border-cyan/40"
-                />
-              ) : (
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-police/40 border border-cyan/30 text-xs font-bold text-cyan">
-                  {getInitials(user?.name)}
-                </div>
-              )}
-              <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-navy" />
-            </div>
+          {/* Top-Right User Profile Avatar with Interactive Popover */}
+          <div className="relative" ref={profileMenuRef}>
+            <button
+              onClick={() => setIsProfileMenuOpen((prev) => !prev)}
+              aria-label="Open profile menu"
+              aria-expanded={isProfileMenuOpen}
+              className="group flex items-center gap-2.5 rounded-xl border border-white/10 bg-white/5 p-1.5 md:pr-3 text-left transition-all hover:border-cyan/40 hover:bg-white/10 shrink-0 focus:outline-none"
+            >
+              <div className="relative">
+                {user?.avatar ? (
+                  <img
+                    src={user.avatar}
+                    alt={user.name || 'Officer'}
+                    className="h-8 w-8 rounded-lg object-cover border border-cyan/40"
+                  />
+                ) : (
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-police/40 border border-cyan/30 text-xs font-bold text-cyan">
+                    {getInitials(user?.name)}
+                  </div>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-navy" />
+              </div>
 
-            <div className="hidden md:flex flex-col min-w-0">
-              <span className="text-xs font-bold text-white truncate max-w-[110px]">
-                {user?.name || 'Officer'}
-              </span>
-              <span className="text-[10px] text-cyan uppercase font-semibold tracking-wider">
-                {user?.role || 'Investigator'}
-              </span>
-            </div>
-          </Link>
+              <div className="hidden md:flex flex-col min-w-0">
+                <span className="text-xs font-bold text-white truncate max-w-[110px]">
+                  {user?.name || 'Officer'}
+                </span>
+                <span className="text-[10px] text-cyan uppercase font-semibold tracking-wider">
+                  {user?.role || 'Investigator'}
+                </span>
+              </div>
+            </button>
+
+            {/* Profile Popover Dropdown */}
+            {isProfileMenuOpen && (
+              <div className="absolute right-0 top-full mt-2 w-64 rounded-2xl border border-white/10 bg-slate-900/95 p-3 text-slate-200 shadow-2xl backdrop-blur-xl z-[1200] animate-in fade-in zoom-in-95 duration-150">
+                <div className="flex items-center gap-3 pb-3 border-b border-white/10">
+                  {user?.avatar ? (
+                    <img
+                      src={user.avatar}
+                      alt={user.name || 'Officer'}
+                      className="h-10 w-10 rounded-xl object-cover border border-cyan/40"
+                    />
+                  ) : (
+                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-police/40 border border-cyan/30 text-sm font-bold text-cyan">
+                      {getInitials(user?.name)}
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-bold text-white truncate">{user?.name || 'Officer'}</p>
+                    <p className="text-xs text-slate-400 font-mono truncate">{user?.email || 'officer@ksp.gov.in'}</p>
+                  </div>
+                </div>
+
+                <div className="py-2 space-y-1 text-xs">
+                  <Link
+                    to="/profile"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-slate-300 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <Shield className="h-4 w-4 text-cyan" />
+                    <span>Officer Profile & Credentials</span>
+                  </Link>
+
+                  <Link
+                    to="/settings"
+                    onClick={() => setIsProfileMenuOpen(false)}
+                    className="flex items-center gap-2.5 rounded-xl px-3 py-2 text-slate-300 hover:bg-white/10 hover:text-white transition"
+                  >
+                    <Settings className="h-4 w-4 text-slate-400" />
+                    <span>System Settings</span>
+                  </Link>
+                </div>
+
+                <div className="pt-2 border-t border-white/10">
+                  <button
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      logout();
+                    }}
+                    className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-red-400 hover:bg-red-500/10 transition"
+                  >
+                    <span>Sign Out of AI-CIOS</span>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
 
       </div>

@@ -68,6 +68,17 @@ export default defineConfig({
   ],
   build: {
     chunkSizeWarningLimit: 1200,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-react': ['react', 'react-dom', 'react-router-dom'],
+          'vendor-charts': ['echarts', 'echarts-for-react'],
+          'vendor-maps': ['leaflet'],
+          'vendor-pdf': ['jspdf', 'html2canvas'],
+          'vendor-query': ['@tanstack/react-query']
+        }
+      }
+    }
   },
   server: {
     port: 5173,

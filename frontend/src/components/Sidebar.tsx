@@ -1,5 +1,5 @@
-import { useEffect, useState } from 'react';
-import { BarChart3, Brain, FileText, Map, Network, Search, Settings, LayoutDashboard, X, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useEffect } from 'react';
+import { BarChart3, Brain, FileText, Map, Network, Search, Settings, LayoutDashboard, X } from 'lucide-react';
 import { NavLink } from 'react-router-dom';
 import type { NavigationItem } from '../types/navigation';
 import { BrandLogo } from './common/BrandLogo';
@@ -18,11 +18,12 @@ const navigationItems: NavigationItem[] = [
 interface SidebarProps {
   isOpen: boolean;
   onClose: () => void;
-  isCollapsed?: boolean;
-  onToggleCollapse?: () => void;
+  isHovered?: boolean;
+  onMouseEnter?: () => void;
+  onMouseLeave?: () => void;
 }
 
-export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse }: SidebarProps) {
+export function Sidebar({ isOpen, onClose, isHovered = false, onMouseEnter, onMouseLeave }: SidebarProps) {
   useEffect(() => {
     const handleEscape = (e: KeyboardEvent) => {
       if (e.key === 'Escape' && isOpen) {
@@ -32,6 +33,9 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse
     window.addEventListener('keydown', handleEscape);
     return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen, onClose]);
+
+  // On desktop: default state is compact (w-20), on hover it smoothly expands to w-[260px]
+  const isExpanded = isHovered;
 
   return (
     <>
@@ -43,19 +47,21 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse
         />
       )}
       
-      {/* Collapsible SOC Sidebar */}
+      {/* Automatic Hover-Expand SOC Sidebar */}
       <aside 
+        onMouseEnter={onMouseEnter}
+        onMouseLeave={onMouseLeave}
         className={`fixed inset-y-0 left-0 z-[1050] flex flex-col border-r border-white/10 bg-navy/95 py-4 text-slate-200 shadow-2xl transition-all duration-300 ease-in-out md:static md:flex md:translate-x-0 ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
-        } ${isCollapsed ? 'md:w-20 md:px-2' : 'w-[260px] px-3.5'}`}
+        } ${isExpanded ? 'md:w-[260px] px-3.5' : 'md:w-20 md:px-2 w-[260px] px-3.5'}`}
       >
         {/* Header Branding */}
-        <div className={`flex items-center pb-5 ${isCollapsed ? 'justify-center px-0' : 'justify-between px-2'}`}>
-          <div className={`${isCollapsed ? 'hidden' : 'block'}`}>
+        <div className={`flex items-center pb-5 ${!isExpanded ? 'md:justify-center md:px-0' : 'justify-between px-2'}`}>
+          <div className={`${!isExpanded ? 'md:hidden' : 'block'}`}>
             <BrandLogo showText variant="sidebar" size={28} />
           </div>
-          {isCollapsed && (
-            <div className="flex items-center justify-center">
+          {!isExpanded && (
+            <div className="hidden md:flex items-center justify-center">
               <BrandLogo size={32} />
             </div>
           )}
@@ -69,7 +75,7 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse
         </div>
 
         {/* Navigation Items */}
-        <nav className="flex-1 space-y-1.5 overflow-y-auto">
+        <nav className="flex-1 space-y-1.5 overflow-y-auto overflow-x-hidden">
           {navigationItems.map((item) => {
             const Icon = item.icon;
             return (
@@ -84,8 +90,8 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse
                 className={({ isActive }) =>
                   [
                     'group relative flex items-center transition-all duration-200',
-                    isCollapsed
-                      ? 'justify-center rounded-xl p-3'
+                    !isExpanded
+                      ? 'md:justify-center rounded-xl p-3'
                       : 'gap-3 rounded-xl px-3.5 py-2.5',
                     isActive
                       ? 'bg-police text-white shadow-lg shadow-police/20 font-semibold'
@@ -94,10 +100,14 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse
                 }
               >
                 <Icon className="h-5 w-5 shrink-0" />
-                {!isCollapsed && <span className="text-sm font-medium">{item.label}</span>}
+                <span className={`text-sm font-medium transition-opacity duration-200 whitespace-nowrap ${
+                  !isExpanded ? 'md:hidden' : 'block'
+                }`}>
+                  {item.label}
+                </span>
 
                 {/* Tooltip on Collapsed State */}
-                {isCollapsed && (
+                {!isExpanded && (
                   <span className="pointer-events-none absolute left-full ml-3 z-[1100] hidden whitespace-nowrap rounded-lg border border-white/10 bg-slate-900 px-2.5 py-1 text-xs font-semibold text-white shadow-xl group-hover:block">
                     {item.label}
                   </span>
@@ -106,27 +116,6 @@ export function Sidebar({ isOpen, onClose, isCollapsed = false, onToggleCollapse
             );
           })}
         </nav>
-
-        {/* Bottom Expand / Collapse Toggle Control */}
-        <div className="pt-3 border-t border-white/10 mt-2 hidden md:block">
-          <button
-            onClick={onToggleCollapse}
-            aria-label={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-            className={`flex w-full items-center gap-2.5 rounded-xl border border-white/5 p-2.5 text-xs text-slate-400 hover:bg-white/5 hover:text-white transition-all ${
-              isCollapsed ? 'justify-center' : 'justify-start'
-            }`}
-            title={isCollapsed ? 'Expand sidebar' : 'Collapse sidebar'}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-4 w-4 text-cyan" />
-            ) : (
-              <>
-                <ChevronLeft className="h-4 w-4 text-cyan" />
-                <span className="font-medium text-slate-300">Collapse Sidebar</span>
-              </>
-            )}
-          </button>
-        </div>
       </aside>
     </>
   );

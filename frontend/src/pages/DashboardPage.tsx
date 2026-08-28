@@ -1,9 +1,10 @@
-import { ArrowUpRight, Bell, Flame, Radar, ShieldAlert, FileText, AlertCircle, RefreshCw, Activity, ChevronRight, ShieldCheck, Sparkles } from 'lucide-react';
 import { Card } from '../components/Card';
 import { Badge } from '../components/Badge';
 import { useQuery } from '@tanstack/react-query';
 import { api, type AlertItem } from '../services/api';
 import { Link } from 'react-router-dom';
+import { ArrowUpRight, Bell, Flame, Radar, ShieldAlert, FileText, AlertCircle, RefreshCw, Activity, ChevronRight, ShieldCheck, Sparkles, Loader2 } from 'lucide-react';
+import ReactECharts from 'echarts-for-react';
 
 export function DashboardPage() {
   const { 
@@ -170,22 +171,78 @@ export function DashboardPage() {
             <Badge variant="neutral">30 days</Badge>
           </div>
 
-          <div className="grid h-64 grid-cols-12 items-end gap-3 rounded-2xl border border-white/5 bg-slate-950/40 p-4">
+          <div className="h-64 w-full rounded-2xl border border-white/5 bg-slate-950/40 p-3">
             {isLoading ? (
-               Array.from({ length: 12 }).map((_, idx) => (
-                 <div key={idx} className="flex h-full items-end">
-                   <div className="w-full rounded-t-xl bg-white/5 animate-pulse" style={{ height: `${Math.random() * 40 + 20}%` }} />
-                 </div>
-               ))
+              <div className="flex h-full items-center justify-center">
+                <Loader2 className="w-6 h-6 animate-spin text-cyan" />
+              </div>
             ) : (
-              chartHeights.map((height, index) => (
-                <div key={`${height}-${index}`} className="flex h-full items-end">
-                  <div
-                    className="w-full rounded-t-xl bg-gradient-to-t from-police via-cyan to-cyan/60 transition-all duration-700 ease-out"
-                    style={{ height: `${height}%` }}
-                  />
-                </div>
-              ))
+              <ReactECharts
+                option={{
+                  backgroundColor: 'transparent',
+                  tooltip: {
+                    trigger: 'axis',
+                    backgroundColor: '#0f172a',
+                    borderColor: 'rgba(148,163,184,0.15)',
+                    textStyle: { color: '#e2e8f0' },
+                    formatter: (params: any[]) => {
+                      if (!params || params.length === 0) return '';
+                      const item = params[0];
+                      return `
+                        <div style="font-weight:bold;margin-bottom:4px;color:#06b6d4">${item.name}</div>
+                        <div style="font-size:12px;color:#fff">Active Incidents: <b>${item.value} cases</b></div>
+                        <div style="font-size:11px;color:#94a3b8;margin-top:2px">Status: Monitored via KSP Feed</div>
+                      `;
+                    }
+                  },
+                  grid: {
+                    left: '2%',
+                    right: '3%',
+                    top: '12%',
+                    bottom: '8%',
+                    containLabel: true
+                  },
+                  xAxis: {
+                    type: 'category',
+                    data: ['Day 1', 'Day 3', 'Day 6', 'Day 9', 'Day 12', 'Day 15', 'Day 18', 'Day 21', 'Day 24', 'Day 27', 'Day 29', 'Today'],
+                    axisLabel: { color: '#94a3b8', fontSize: 10 },
+                    axisTick: { show: false }
+                  },
+                  yAxis: {
+                    type: 'value',
+                    axisLabel: { color: '#94a3b8', fontSize: 10 },
+                    splitLine: { lineStyle: { color: 'rgba(148,163,184,0.06)' } }
+                  },
+                  series: [
+                    {
+                      name: 'Crime Volume',
+                      type: 'bar',
+                      data: chartHeights.map(h => Math.round(h)),
+                      itemStyle: {
+                        color: {
+                          type: 'linear',
+                          x: 0,
+                          y: 0,
+                          x2: 0,
+                          y2: 1,
+                          colorStops: [
+                            { offset: 0, color: '#06b6d4' },
+                            { offset: 1, color: '#1d4ed8' }
+                          ]
+                        },
+                        borderRadius: [4, 4, 0, 0]
+                      },
+                      emphasis: {
+                        itemStyle: {
+                          color: '#38bdf8'
+                        }
+                      }
+                    }
+                  ]
+                }}
+                style={{ height: '100%', width: '100%' }}
+                opts={{ renderer: 'canvas' }}
+              />
             )}
           </div>
 
