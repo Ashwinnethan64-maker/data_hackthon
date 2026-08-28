@@ -16,6 +16,7 @@ const CrimeMapPage = lazy(() => import('./pages/CrimeMapPage').then(m => ({ defa
 const AnalyticsPage = lazy(() => import('./pages/AnalyticsPage').then(m => ({ default: m.AnalyticsPage })));
 const ReportsPage = lazy(() => import('./pages/ReportsPage').then(m => ({ default: m.ReportsPage })));
 const SettingsPage = lazy(() => import('./pages/SettingsPage').then(m => ({ default: m.SettingsPage })));
+const ProfilePage = lazy(() => import('./pages/ProfilePage').then(m => ({ default: m.ProfilePage })));
 
 function PageLoader() {
   return (
@@ -121,6 +122,14 @@ export default function App() {
             element={
               <Suspense fallback={<PageLoader />}>
                 <SettingsPage />
+              </Suspense>
+            } 
+          />
+          <Route 
+            path="/profile" 
+            element={
+              <Suspense fallback={<PageLoader />}>
+                <ProfilePage />
               </Suspense>
             } 
           />

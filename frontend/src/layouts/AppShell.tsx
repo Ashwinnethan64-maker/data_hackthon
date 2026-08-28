@@ -1,13 +1,32 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 import { Sidebar } from '../components/Sidebar';
 import { Navbar } from '../components/Navbar';
 import { ToastContainer } from '../components/ToastContainer';
 
 export function AppShell() {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
-  const [isTabletCollapsed, setIsTabletCollapsed] = useState(false);
+  const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(() => {
+    try {
+      return localStorage.getItem('ai_cios_sidebar_collapsed') === 'true';
+    } catch {
+      return false;
+    }
+  });
+
   const location = useLocation();
+
+  const handleToggleCollapse = () => {
+    setIsSidebarCollapsed((prev) => {
+      const next = !prev;
+      try {
+        localStorage.setItem('ai_cios_sidebar_collapsed', String(next));
+      } catch {
+        // ignore
+      }
+      return next;
+    });
+  };
 
   const isFullHeightPage = 
     location.pathname.startsWith('/ai') || 
@@ -18,15 +37,16 @@ export function AppShell() {
     <div className="h-screen bg-navy text-slate-100 overflow-hidden">
       <div className="flex h-screen relative overflow-hidden">
         <Sidebar 
-          isOpen={isSidebarOpen} 
-          onClose={() => setIsSidebarOpen(false)} 
-          isTabletCollapsed={isTabletCollapsed}
+          isOpen={isMobileSidebarOpen} 
+          onClose={() => setIsMobileSidebarOpen(false)} 
+          isCollapsed={isSidebarCollapsed}
+          onToggleCollapse={handleToggleCollapse}
         />
 
-        <main className="flex h-screen flex-1 flex-col overflow-hidden">
+        <main className="flex h-screen flex-1 flex-col overflow-hidden min-w-0">
           <Navbar 
-            onMenuClick={() => setIsSidebarOpen(true)}
-            onTabletCollapseToggle={() => setIsTabletCollapsed(p => !p)}
+            onMenuClick={() => setIsMobileSidebarOpen(true)}
+            onTabletCollapseToggle={handleToggleCollapse}
           />
           <div className={`flex-1 flex flex-col min-h-0 ${isFullHeightPage ? 'p-0 overflow-hidden h-[calc(100vh-4rem)]' : 'p-3 sm:p-4 md:p-6 lg:p-8 overflow-y-auto'}`}>
             <div className="mx-auto w-full max-w-[1920px] flex-1 flex flex-col min-h-0">

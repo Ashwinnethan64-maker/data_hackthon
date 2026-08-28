@@ -11,6 +11,18 @@ export interface DashboardAnalytics {
   trendPercentage: number;
 }
 
+export interface AlertItem {
+  id: string;
+  type: string;
+  severity: 'Critical' | 'High' | 'Medium' | 'Low';
+  crimeCategory: string;
+  location: string;
+  firNumber?: string;
+  caseId?: string;
+  timestamp: string;
+  message: string;
+}
+
 export interface CaseRecord {
   ROWID: string;
   firNumber: string;
@@ -18,8 +30,10 @@ export interface CaseRecord {
   district: string;
   policeStation: string;
   status: string;
-  dateReported: string;
-  // Other fields exist but these are what we need for the dashboard
+  priorityLevel?: string;
+  priority?: string;
+  dateReported?: string;
+  incidentDate?: string;
 }
 
 export const api = {
@@ -28,7 +42,11 @@ export const api = {
   },
 
   getCases: async (): Promise<CaseRecord[]> => {
-    const res = await apiRequest<{ data: CaseRecord[] }>('/cases');
+    const res = await apiRequest<{ data: CaseRecord[] }>('/cases?limit=10');
     return res.data || [];
+  },
+
+  getAlerts: async (): Promise<AlertItem[]> => {
+    return await apiRequest<AlertItem[]>('/system/alerts');
   },
 };
