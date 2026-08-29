@@ -290,7 +290,7 @@ router.post('/google-login', async (req, res) => {
     }
 
     const googleUser = await googleResponse.json();
-    const { email, given_name, family_name, name } = googleUser;
+    const { email, given_name, family_name, name, picture } = googleUser;
 
     if (!email) {
       return res.status(400).json({ error: 'Email not provided by Google account' });
@@ -298,7 +298,7 @@ router.post('/google-login', async (req, res) => {
 
     // Check if user exists in our local Catalyst DB 'officers' table
     const records = await dbService.getAllRows(req, TABLE_NAME);
-    let user = records.find(r => r.username === email);
+    let user = records.find(r => r.username === email || r.email === email);
 
     if (!user) {
       // If user doesn't exist, auto-register them in Catalyst officers table
@@ -319,11 +319,23 @@ router.post('/google-login', async (req, res) => {
         phone: '',
         department: 'Crime Branch',
         joiningDate: new Date().toISOString().replace('T', ' ').substring(0, 19),
-        status: 'Active'
+        status: 'Active',
+        avatar: picture || ''
       };
 
       user = await dbService.insertRow(req, TABLE_NAME, userData);
       console.log(`[DEBUG] Automatically registered new Google user in database: ${email}`);
+    } else if (picture && (!user.avatar || user.avatar !== picture)) {
+      // Update avatar with latest Google picture if available
+      try {
+        await dbService.updateRow(req, TABLE_NAME, {
+          ROWID: user.ROWID,
+          avatar: picture
+        });
+        user.avatar = picture;
+      } catch (updErr) {
+        console.warn('Could not update avatar in database:', updErr.message);
+      }
     }
 
     // Now, generate a Catalyst Custom User token or local fallback token

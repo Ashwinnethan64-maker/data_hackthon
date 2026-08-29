@@ -105,13 +105,22 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
                   <img
                     src={user.avatar}
                     alt={user.name || 'Officer'}
+                    referrerPolicy="no-referrer"
+                    onError={(e) => {
+                      // Gracefully fall back to initials if image URL fails to load
+                      e.currentTarget.style.display = 'none';
+                      const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                      if (fallback) fallback.style.display = 'flex';
+                    }}
                     className="h-8 w-8 rounded-lg object-cover border border-cyan/40"
                   />
-                ) : (
-                  <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-police/40 border border-cyan/30 text-xs font-bold text-cyan">
-                    {getInitials(user?.name)}
-                  </div>
-                )}
+                ) : null}
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-lg bg-police/40 border border-cyan/30 text-xs font-bold text-cyan"
+                  style={{ display: user?.avatar ? 'none' : 'flex' }}
+                >
+                  {getInitials(user?.name)}
+                </div>
                 <span className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full bg-emerald-500 border-2 border-navy" />
               </div>
 
@@ -133,13 +142,21 @@ export function Navbar({ onMenuClick, onTabletCollapseToggle }: NavbarProps) {
                     <img
                       src={user.avatar}
                       alt={user.name || 'Officer'}
+                      referrerPolicy="no-referrer"
+                      onError={(e) => {
+                        e.currentTarget.style.display = 'none';
+                        const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                        if (fallback) fallback.style.display = 'flex';
+                      }}
                       className="h-10 w-10 rounded-xl object-cover border border-cyan/40"
                     />
-                  ) : (
-                    <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-police/40 border border-cyan/30 text-sm font-bold text-cyan">
-                      {getInitials(user?.name)}
-                    </div>
-                  )}
+                  ) : null}
+                  <div
+                    className="flex h-10 w-10 items-center justify-center rounded-xl bg-police/40 border border-cyan/30 text-sm font-bold text-cyan"
+                    style={{ display: user?.avatar ? 'none' : 'flex' }}
+                  >
+                    {getInitials(user?.name)}
+                  </div>
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-white truncate">{user?.name || 'Officer'}</p>
                     <p className="text-xs text-slate-400 font-mono truncate">{user?.email || 'officer@ksp.gov.in'}</p>

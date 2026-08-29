@@ -214,7 +214,23 @@ export function AuthProvider({ children }: PropsWithChildren) {
 
               setLoading(true);
               try {
-                // 1. Post Google access token to Express backend
+                // 1. Fetch Google user profile directly from Google Identity API
+                let googleAvatar = '';
+                try {
+                  const gUserRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+                    headers: { Authorization: `Bearer ${accessToken}` }
+                  });
+                  if (gUserRes.ok) {
+                    const gUser = await gUserRes.json();
+                    if (gUser.picture) {
+                      googleAvatar = gUser.picture;
+                    }
+                  }
+                } catch (gErr) {
+                  console.warn('Could not fetch direct Google userinfo:', gErr);
+                }
+
+                // 2. Post Google access token to Express backend
                 const backendRes = await fetch('/server/ai-cios/auth/google-login', {
                   method: 'POST',
                   headers: { 'Content-Type': 'application/json' },
@@ -234,7 +250,7 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   throw new Error(data.error || `Backend Google login failed (HTTP ${backendRes.status})`);
                 }
 
-                // 2. Perform signinWithJwt inside Catalyst SDK if available
+                // 3. Perform signinWithJwt inside Catalyst SDK if available
                 if (catalyst?.auth?.signinWithJwt) {
                   try {
                     await catalyst.auth.signinWithJwt(() => {
@@ -249,14 +265,15 @@ export function AuthProvider({ children }: PropsWithChildren) {
                   }
                 }
 
-                // 3. Retrieve authenticated user profile from /auth/me
+                // 4. Retrieve authenticated user profile from /auth/me
                 const profileRes = await fetch('/server/ai-cios/auth/me', {
                   credentials: 'include',
                 });
                 if (profileRes.ok) {
                   const dbProfile = await profileRes.json();
                   if (dbProfile) {
-                    setUser({
+                    const finalAvatar = googleAvatar || dbProfile.avatar;
+                    const authenticatedUser: AuthUser = {
                       id: dbProfile.id || String(dbProfile.ROWID) || 'google-user',
                       name: dbProfile.name || dbProfile.username,
                       username: dbProfile.username,
@@ -264,8 +281,17 @@ export function AuthProvider({ children }: PropsWithChildren) {
                       role: (dbProfile.role?.toLowerCase() as UserRole) || 'investigator',
                       district: dbProfile.district || 'Bengaluru',
                       provider: 'Google',
-                      avatar: dbProfile.avatar
-                    });
+                      avatar: finalAvatar
+                    };
+
+                    try {
+                      localStorage.setItem('ai_cios_cached_user', JSON.stringify(authenticatedUser));
+                      if (finalAvatar) {
+                        localStorage.setItem(`ai_cios_avatar_${authenticatedUser.username || authenticatedUser.id}`, finalAvatar);
+                      }
+                    } catch {}
+
+                    setUser(authenticatedUser);
                   }
                 }
               } catch (err: any) {

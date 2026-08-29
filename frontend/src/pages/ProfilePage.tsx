@@ -106,13 +106,21 @@ export function ProfilePage() {
               <img
                 src={user.avatar}
                 alt={user.name || 'Officer'}
+                referrerPolicy="no-referrer"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none';
+                  const fallback = e.currentTarget.nextElementSibling as HTMLElement;
+                  if (fallback) fallback.style.display = 'flex';
+                }}
                 className="h-28 w-28 rounded-3xl border-2 border-cyan/40 object-cover shadow-2xl shadow-cyan/20"
               />
-            ) : (
-              <div className="h-28 w-28 rounded-3xl border-2 border-cyan/40 bg-gradient-to-br from-police via-navy to-slate-900 flex items-center justify-center text-3xl font-black text-cyan shadow-2xl shadow-cyan/20">
-                {getInitials(user?.name)}
-              </div>
-            )}
+            ) : null}
+            <div
+              className="h-28 w-28 rounded-3xl border-2 border-cyan/40 bg-gradient-to-br from-police via-navy to-slate-900 flex items-center justify-center text-3xl font-black text-cyan shadow-2xl shadow-cyan/20"
+              style={{ display: user?.avatar ? 'none' : 'flex' }}
+            >
+              {getInitials(user?.name)}
+            </div>
             <span className="absolute bottom-1 right-1 h-5 w-5 rounded-full bg-emerald-500 border-2 border-navy ring-2 ring-emerald-500/30" />
             
             {/* Quick Upload Hover Overlay */}
@@ -157,8 +165,8 @@ export function ProfilePage() {
           </div>
 
           <div className="space-y-1 w-full">
-            <h2 className="text-xl font-bold text-white truncate">{user?.name || 'Officer Ashwin Nethan'}</h2>
-            <p className="text-xs font-mono text-cyan truncate">{user?.email || 'officer@karnatakapolice.gov.in'}</p>
+            <h2 className="text-xl font-bold text-white truncate">{user?.name || user?.username || 'Officer'}</h2>
+            <p className="text-xs font-mono text-cyan truncate">{user?.email || user?.username || 'officer@karnatakapolice.gov.in'}</p>
             <p className="text-xs text-slate-400 mt-1">
               Role: <span className="text-slate-200 font-semibold uppercase">{user?.role || 'Investigator'}</span>
             </p>
