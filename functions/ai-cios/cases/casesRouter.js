@@ -208,6 +208,80 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Maps district + station name to a 9-digit CCTNS station prefix
+function getStationPrefix(dist, station) {
+  const d = (dist || '').trim();
+  const s = (station || '').toLowerCase();
+  if (d === 'Bengaluru Urban') {
+    if (s.includes('indiranagar')) return '100011002';
+    if (s.includes('whitefield'))  return '100011003';
+    if (s.includes('jayanagar'))   return '800011004';
+    return '100011001';
+  }
+  if (d === 'Dharwad' || d === 'Hubballi-Dharwad') return '100022001';
+  if (d === 'Mysuru')   return '100033001';
+  if (d === 'Belagavi') return '100044001';
+  if (d === 'Kalaburagi') return '300055001';
+  if (d.includes('Dakshina Kannada') || d === 'Mangaluru (Dakshina Kannada)') return '100066001';
+  
+  // Deterministic fallback: exactly 9 digits
+  const hash = d.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0);
+  const distCode = String((hash % 900) + 100); // 3 digits: 100-999
+  const prefix = `1${distCode}1001`;
+  return prefix.slice(0, 9).padEnd(9, '0');
+}
+
+// GET /cases/generate-fir - Authoritative Server FIR Generation
+router.get('/generate-fir', async (req, res) => {
+  try {
+    const { district = 'Bengaluru Urban', policeStation = '', incidentDate } = req.query;
+    const year = incidentDate && !isNaN(new Date(incidentDate).getTime())
+      ? new Date(incidentDate).getFullYear()
+      : new Date().getFullYear();
+
+    const prefix = getStationPrefix(district, policeStation);
+    const allCases = await dbService.getAllRows(req, TABLE_NAME);
+
+    // Existing FIRs under this prefix + year
+    const existingFirSet = new Set(allCases.map(c => String(c.firNumber || '')));
+    let maxSeq = 0;
+
+    for (const c of allCases) {
+      const fir = String(c.firNumber || '');
+      if (/^\d{18}$/.test(fir)) {
+        const firPrefix = fir.substring(0, 9);
+        const firYear = parseInt(fir.substring(9, 13), 10);
+        const firSeq = parseInt(fir.substring(13), 10);
+        if (firPrefix === prefix && firYear === year && !isNaN(firSeq)) {
+          if (firSeq > maxSeq) maxSeq = firSeq;
+        }
+      }
+    }
+
+    // Sequence allocation with collision resistance
+    let nextSeq = maxSeq + 1;
+    let candidate = `${prefix}${year}${String(nextSeq).padStart(5, '0')}`;
+    while (existingFirSet.has(candidate)) {
+      nextSeq += 1;
+      candidate = `${prefix}${year}${String(nextSeq).padStart(5, '0')}`;
+    }
+
+    if (!/^\d{18}$/.test(candidate)) {
+      return res.status(500).json({ error: 'Failed to generate a valid 18-digit FIR number' });
+    }
+
+    res.json({
+      firNumber: candidate,
+      district,
+      policeStation,
+      year
+    });
+  } catch (error) {
+    console.error('Error generating FIR number:', error);
+    res.status(500).json({ error: 'Failed to generate FIR number' });
+  }
+});
+
 // GET a case by id
 router.get('/:id', async (req, res) => {
   try {
@@ -414,6 +488,16 @@ router.get('/:id/export-pdf', async (req, res) => {
 router.post('/', validateBody(createCaseSchema), async (req, res) => {
   try {
     const rowData = { ...req.body };
+
+    // Check for duplicate FIR number
+    const allExisting = await dbService.getAllRows(req, TABLE_NAME);
+    const isDuplicate = allExisting.some(
+      c => String(c.firNumber || '').trim() === String(rowData.firNumber || '').trim()
+    );
+    if (isDuplicate) {
+      return res.status(409).json({ error: `FIR number ${rowData.firNumber} already exists in the registry.` });
+    }
+
     if (rowData.priority) {
       rowData.priorityLevel = rowData.priority;
       delete rowData.priority;

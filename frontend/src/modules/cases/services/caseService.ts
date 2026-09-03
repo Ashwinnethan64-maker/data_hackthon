@@ -31,6 +31,15 @@ export const caseService = {
     return apiRequest<CaseRecord | undefined>(`/cases/${encodeURIComponent(firNumber)}`).catch(() => undefined);
   },
 
+  async generateFir(params: { district?: string; policeStation?: string; incidentDate?: string } = {}): Promise<{ firNumber: string }> {
+    const searchParams = new URLSearchParams();
+    if (params.district) searchParams.append('district', params.district);
+    if (params.policeStation) searchParams.append('policeStation', params.policeStation);
+    if (params.incidentDate) searchParams.append('incidentDate', params.incidentDate);
+    const qs = searchParams.toString();
+    return apiRequest<{ firNumber: string }>(`/cases/generate-fir${qs ? `?${qs}` : ''}`);
+  },
+
   async createCase(record: Omit<CaseRecord, 'id' | 'officer'> & { officerId?: string }): Promise<CaseRecord> {
     return apiRequest<CaseRecord>('/cases', {
       method: 'POST',

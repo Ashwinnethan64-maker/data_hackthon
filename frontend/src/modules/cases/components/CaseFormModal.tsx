@@ -131,47 +131,43 @@ export function CaseFormModal({ isOpen, onClose, onSubmit, initialData }: CaseFo
     }
   }, [isOpen, initialData]);
 
-  // Auto-generate sequential 18-digit CCTNS FIR number whenever district, station, or year changes.
-  // AbortController cancels any stale in-flight request when deps change before it resolves.
+  const [firLoading, setFirLoading] = useState(false);
+  const [firGenerationError, setFirGenerationError] = useState<string | null>(null);
+
+  // Authoritative server FIR generation
+  const fetchAuthoritativeFir = async (controllerSignal?: AbortSignal) => {
+    if (initialData) return;
+    setFirLoading(true);
+    setFirGenerationError(null);
+    try {
+      const res = await caseService.generateFir({
+        district,
+        policeStation,
+        incidentDate: incidentDate ? new Date(incidentDate).toISOString() : undefined,
+      });
+      if (controllerSignal?.aborted) return;
+      if (res && res.firNumber && /^\d{18}$/.test(res.firNumber)) {
+        setFirNumber(res.firNumber);
+        setFirGenerationError(null);
+      } else {
+        setFirNumber('');
+        setFirGenerationError('Unable to generate a valid FIR number. Please retry.');
+      }
+    } catch {
+      if (controllerSignal?.aborted) return;
+      setFirNumber('');
+      setFirGenerationError('Unable to generate FIR number. Please retry.');
+    } finally {
+      if (!controllerSignal?.aborted) {
+        setFirLoading(false);
+      }
+    }
+  };
+
   useEffect(() => {
     if (!isOpen || initialData) return;
-
     const controller = new AbortController();
-    const year = new Date(incidentDate || new Date()).getFullYear();
-    const prefix = getStationPrefix(district, policeStation);
-
-    const fetchNext = async () => {
-      try {
-        // Fetch all cases for this district (no station filter — station names are freeform
-        // and an exact-match filter would return nothing if the name isn't an exact DB match)
-        const res = await caseService.getAllCases({
-          district,
-          limit: 500,
-        });
-        if (controller.signal.aborted) return;
-
-        // Scan all returned FIRs to find the highest sequence under this prefix + year
-        let maxSeq = 0;
-        for (const c of (res.data ?? [])) {
-          const fir = c.firNumber ?? '';
-          if (/^\d{18}$/.test(fir)) {
-            const firPrefix = fir.substring(0, 9);
-            const firYear   = parseInt(fir.substring(9, 13), 10);
-            const firSeq    = parseInt(fir.substring(13), 10);
-            if (firPrefix === prefix && firYear === year && !isNaN(firSeq)) {
-              if (firSeq > maxSeq) maxSeq = firSeq;
-            }
-          }
-        }
-
-        setFirNumber(`${prefix}${year}${String(maxSeq + 1).padStart(5, '0')}`);
-      } catch {
-        if (controller.signal.aborted) return;
-        setFirNumber(`${prefix}${year}${String(Math.floor(1 + Math.random() * 99999)).padStart(5, '0')}`);
-      }
-    };
-
-    fetchNext();
+    fetchAuthoritativeFir(controller.signal);
     return () => controller.abort();
   }, [isOpen, initialData, district, policeStation, incidentDate]);
 
@@ -280,16 +276,37 @@ export function CaseFormModal({ isOpen, onClose, onSubmit, initialData }: CaseFo
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="fir-number" className="block text-xs font-medium text-slate-400 mb-1.5">FIR Number</label>
-              <input
-                id="fir-number"
-                type="text"
-                className="w-full min-h-[44px] rounded-xl border border-white/5 bg-slate-950/40 px-3.5 py-2 text-sm text-slate-500 font-mono cursor-not-allowed select-none focus:outline-none"
-                value={firNumber}
-                disabled
-                required
-              />
-              <span className="text-[10px] text-cyan/70 mt-1 block">Allocated automatically by CCTNS.</span>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="fir-number" className="block text-xs font-medium text-slate-400">FIR Number</label>
+                {firLoading && (
+                  <span className="text-[10px] text-cyan animate-pulse">Allocating from registry...</span>
+                )}
+              </div>
+              <div className="relative">
+                <input
+                  id="fir-number"
+                  type="text"
+                  className={`w-full min-h-[44px] rounded-xl border ${firGenerationError ? 'border-red-500/40' : 'border-white/5'} bg-slate-950/40 px-3.5 py-2 text-sm text-slate-300 font-mono cursor-not-allowed select-none focus:outline-none`}
+                  value={firLoading ? 'Generating...' : firNumber}
+                  disabled
+                  placeholder="System-generated 18-digit FIR"
+                  required
+                />
+              </div>
+              {firGenerationError ? (
+                <div className="flex items-center justify-between mt-1 text-[11px] text-red-400">
+                  <span>{firGenerationError}</span>
+                  <button
+                    type="button"
+                    onClick={() => fetchAuthoritativeFir()}
+                    className="underline text-cyan hover:text-cyan/80 ml-2 font-medium"
+                  >
+                    Retry
+                  </button>
+                </div>
+              ) : (
+                <span className="text-[10px] text-cyan/70 mt-1 block">Allocated automatically by CCTNS (Authoritative 18 digits).</span>
+              )}
             </div>
 
             <div>
@@ -610,10 +627,10 @@ export function CaseFormModal({ isOpen, onClose, onSubmit, initialData }: CaseFo
           </Button>
           <Button
             type="submit"
-            disabled={submitting}
+            disabled={submitting || firLoading || !firNumber || !/^\d{18}$/.test(firNumber)}
             className="px-5 py-2 text-xs rounded-xl"
           >
-            {submitting ? 'Saving...' : initialData ? 'Update Case File' : 'Log Case File'}
+            {submitting ? 'Saving...' : firLoading ? 'Generating FIR...' : initialData ? 'Update Case File' : 'Log Case File'}
           </Button>
         </div>
       </form>
