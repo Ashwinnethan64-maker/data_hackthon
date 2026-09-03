@@ -227,6 +227,7 @@ export function CaseFormModal({ isOpen, onClose, onSubmit, initialData }: CaseFo
       crimeCategory,
       district,
       policeStation: policeStation.trim(),
+      dateReported: new Date().toISOString(),
       incidentDate: new Date(incidentDate).toISOString(),
       latitude: Number(latitude),
       longitude: Number(longitude),

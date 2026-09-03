@@ -58,7 +58,12 @@ export async function apiRequest<T = any>(
         // Global handler for unauthorized
         window.dispatchEvent(new CustomEvent('unauthorized_error'));
       }
-      const errorMessage = (data && typeof data === 'object' && data.error) ? data.error : (typeof data === 'string' && data ? data : `HTTP error! Status: ${response.status}`);
+      let errorMessage = `HTTP error! Status: ${response.status}`;
+      if (data && typeof data === 'object') {
+        errorMessage = data.error || data.message || data.details || JSON.stringify(data);
+      } else if (typeof data === 'string' && data.trim()) {
+        errorMessage = data;
+      }
       throw new Error(errorMessage);
     }
 
